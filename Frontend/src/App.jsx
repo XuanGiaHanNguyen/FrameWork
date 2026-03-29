@@ -85,7 +85,7 @@ const PRESETS = [
 
 // ─── NODE META ────────────────────────────────────────────────────────────────
 const NODE_META = {
-  github:    { label: "GitHub Repo",   Icon: Brain,           shade: "strong" },
+  github:    { label: "GitHub Repo",   Icon: Brain,            shade: "strong" },
   llm:       { label: "LLM",           Icon: Brain,            shade: "medium" },
   rag:       { label: "RAG Retriever", Icon: Database,         shade: "strong" },
   output:    { label: "Output",        Icon: FileText,         shade: "medium" },
@@ -93,24 +93,38 @@ const NODE_META = {
   transform: { label: "Transform",     Icon: SlidersHorizontal,shade: "medium" },
 };
 
+// ─── NODE SIZE ─────────────────────────────────────────────────────────────────
+const NODE_WIDTH = 220;
+// We measure node height dynamically, but use this for handle vertical center
+// handles are rendered at top:50% so we just use 50% of clientHeight
+
 // ─── FLOW NODE ────────────────────────────────────────────────────────────────
-function FlowNode({ node, selected, onDelete, onFieldChange, onMouseDown, theme: t }) {
+function FlowNode({
+  node, selected, onDelete, onFieldChange, onMouseDown,
+  onStartConnect,   // (nodeId, e) — user starts dragging from right handle
+  onCompleteConnect,// (nodeId)    — user releases on left handle
+  connectingFrom,   // string|null — id of node being connected from
+  theme: t
+}) {
   const meta = NODE_META[node.type] || NODE_META.output;
   const NodeIcon = meta.Icon;
+
+  const isTarget = connectingFrom && connectingFrom !== node.id;
 
   return (
     <div
       onMouseDown={onMouseDown}
       style={{
-        width: 220,
+        width: NODE_WIDTH,
         cursor: "grab",
         background: t.surface,
-        border: `1px solid ${selected ? t.text : t.border}`,
+        border: `1px solid ${selected ? t.text : isTarget ? t.accent : t.border}`,
         borderRadius: 10,
         boxShadow: selected ? t.nodeGlow : t.shadow,
         userSelect: "none",
         transition: "border-color .15s, box-shadow .15s",
         fontFamily: "'DM Mono', 'Fira Mono', monospace",
+        position: "relative",
       }}
     >
       {/* Header */}
@@ -214,11 +228,56 @@ function FlowNode({ node, selected, onDelete, onFieldChange, onMouseDown, theme:
         ))}
       </div>
 
-      {/* Left & right handles */}
-      <div style={{ position: "absolute", left: -5, top: "50%", transform: "translateY(-50%)", width: 10, height: 10, borderRadius: "50%", background: t.handle, border: `2px solid ${t.bg}`, pointerEvents: "none" }} />
-      <div style={{ position: "absolute", right: -5, top: "50%", transform: "translateY(-50%)", width: 10, height: 10, borderRadius: "50%", background: t.handle, border: `2px solid ${t.bg}`, pointerEvents: "none" }} />
+      {/* LEFT handle — drop target */}
+      <div
+        onMouseUp={e => {
+          e.stopPropagation();
+          if (connectingFrom && connectingFrom !== node.id) onCompleteConnect(node.id);
+        }}
+        style={{
+          position: "absolute", left: -6, top: "50%", transform: "translateY(-50%)",
+          width: 12, height: 12, borderRadius: "50%",
+          background: isTarget ? t.text : t.handle,
+          border: `2px solid ${t.bg}`,
+          cursor: isTarget ? "crosshair" : "default",
+          zIndex: 10,
+          transition: "background .15s, transform .15s",
+          ...(isTarget ? { transform: "translateY(-50%) scale(1.4)" } : {}),
+        }}
+      />
+
+      {/* RIGHT handle — drag source */}
+      <div
+        onMouseDown={e => {
+          e.stopPropagation();
+          onStartConnect(node.id, e);
+        }}
+        style={{
+          position: "absolute", right: -6, top: "50%", transform: "translateY(-50%)",
+          width: 12, height: 12, borderRadius: "50%",
+          background: connectingFrom === node.id ? t.text : t.handle,
+          border: `2px solid ${t.bg}`,
+          cursor: "crosshair",
+          zIndex: 10,
+          transition: "background .15s, transform .15s",
+        }}
+        onMouseEnter={e => {
+          if (!connectingFrom) e.currentTarget.style.transform = "translateY(-50%) scale(1.4)";
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = "translateY(-50%)";
+        }}
+      />
     </div>
   );
+}
+
+// ─── BEZIER HELPER ────────────────────────────────────────────────────────────
+function makePath(fx, fy, tx, ty) {
+  const dx = Math.abs(tx - fx);
+  const cx1 = fx + Math.max(50, dx * 0.5);
+  const cx2 = tx - Math.max(50, dx * 0.5);
+  return `M${fx},${fy} C${cx1},${fy} ${cx2},${ty} ${tx},${ty}`;
 }
 
 // ─── FLOW CANVAS ──────────────────────────────────────────────────────────────
@@ -247,6 +306,20 @@ const INITIAL_EDGES = [
   { id: "e2", from: "2", to: "3" },
 ];
 
+// Returns the right-handle position of a node (canvas coords, before pan)
+function getRightHandle(node, nodeRefs) {
+  const el = nodeRefs.current[node.id];
+  const h = el ? el.offsetHeight : 80;
+  return { x: node.x + NODE_WIDTH, y: node.y + h / 2 };
+}
+
+// Returns the left-handle position of a node
+function getLeftHandle(node, nodeRefs) {
+  const el = nodeRefs.current[node.id];
+  const h = el ? el.offsetHeight : 80;
+  return { x: node.x, y: node.y + h / 2 };
+}
+
 function FlowCanvas({ theme: t }) {
   const [nodes, setNodes] = useState(INITIAL_NODES);
   const [edges, setEdges] = useState(INITIAL_EDGES);
@@ -255,18 +328,26 @@ function FlowCanvas({ theme: t }) {
   const [runLog, setRunLog] = useState([]);
   const [showLog, setShowLog] = useState(false);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+
+  // Connection state
+  const [connectingFrom, setConnectingFrom] = useState(null); // nodeId
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });    // current mouse in canvas coords
+
   const dragging = useRef(null);
   const panning = useRef(null);
   const canvasRef = useRef();
-  const svgRef = useRef();
+  const nodeRefs = useRef({}); // map nodeId → DOM element
+  const edgeIdCounter = useRef(10);
 
-  const onMouseDown = useCallback((nodeId, e) => {
+  // ── Drag nodes ──
+  const onNodeMouseDown = useCallback((nodeId, e) => {
     e.stopPropagation();
     const node = nodes.find(n => n.id === nodeId);
     setSelected(nodeId);
     dragging.current = { nodeId, startX: e.clientX - node.x, startY: e.clientY - node.y };
   }, [nodes]);
 
+  // ── Pan canvas ──
   const onCanvasMouseDown = useCallback((e) => {
     const tag = e.target.tagName.toLowerCase();
     if (e.target === canvasRef.current || tag === "svg" || tag === "path" || tag === "rect" || tag === "circle") {
@@ -275,6 +356,29 @@ function FlowCanvas({ theme: t }) {
     }
   }, [pan]);
 
+  // ── Start connecting from right handle ──
+  const onStartConnect = useCallback((nodeId, e) => {
+    e.stopPropagation();
+    const rect = canvasRef.current.getBoundingClientRect();
+    setConnectingFrom(nodeId);
+    setDragPos({ x: e.clientX - rect.left - pan.x, y: e.clientY - rect.top - pan.y });
+  }, [pan]);
+
+  // ── Complete connection on left handle ──
+  const onCompleteConnect = useCallback((targetNodeId) => {
+    if (!connectingFrom || connectingFrom === targetNodeId) {
+      setConnectingFrom(null);
+      return;
+    }
+    // Avoid duplicate edges
+    setEdges(es => {
+      const exists = es.some(e => e.from === connectingFrom && e.to === targetNodeId);
+      if (exists) return es;
+      return [...es, { id: `e${++edgeIdCounter.current}`, from: connectingFrom, to: targetNodeId }];
+    });
+    setConnectingFrom(null);
+  }, [connectingFrom]);
+
   const onMouseMove = useCallback((e) => {
     if (dragging.current) {
       const { nodeId, startX, startY } = dragging.current;
@@ -282,18 +386,28 @@ function FlowCanvas({ theme: t }) {
     } else if (panning.current) {
       setPan({ x: e.clientX - panning.current.startX, y: e.clientY - panning.current.startY });
     }
-  }, []);
 
-  const onMouseUp = useCallback(() => {
+    if (connectingFrom) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      setDragPos({ x: e.clientX - rect.left - pan.x, y: e.clientY - rect.top - pan.y });
+    }
+  }, [connectingFrom, pan]);
+
+  const onMouseUp = useCallback((e) => {
     dragging.current = null;
     panning.current = null;
-  }, []);
+    if (connectingFrom) setConnectingFrom(null);
+  }, [connectingFrom]);
 
   const onDelete = useCallback((id) => {
     setNodes(ns => ns.filter(n => n.id !== id));
     setEdges(es => es.filter(e => e.from !== id && e.to !== id));
     if (selected === id) setSelected(null);
   }, [selected]);
+
+  const deleteEdge = useCallback((edgeId) => {
+    setEdges(es => es.filter(e => e.id !== edgeId));
+  }, []);
 
   const onFieldChange = useCallback((nodeId, fieldIdx, value) => {
     setNodes(ns => ns.map(n => n.id === nodeId ? {
@@ -329,38 +443,75 @@ function FlowCanvas({ theme: t }) {
     setRunning(false);
   }, [nodes]);
 
-  // Build edge SVG paths — using actual node positions + pan
-  const NODE_WIDTH = 220;
-  const NODE_HEIGHT_APPROX = 56; // vertical midpoint approx
-
+  // ── Build committed edge paths ──
   const edgePaths = edges.map(e => {
     const fromNode = nodes.find(n => n.id === e.from);
     const toNode = nodes.find(n => n.id === e.to);
     if (!fromNode || !toNode) return null;
 
-    // Right-handle of source, left-handle of target (in canvas coords, pan applied)
-    const fx = fromNode.x + NODE_WIDTH + pan.x;
-    const fy = fromNode.y + NODE_HEIGHT_APPROX + pan.y;
-    const tx = toNode.x + pan.x;
-    const ty = toNode.y + NODE_HEIGHT_APPROX + pan.y;
+    const from = getRightHandle(fromNode, nodeRefs);
+    const to   = getLeftHandle(toNode, nodeRefs);
 
-    const dx = Math.abs(tx - fx);
-    const cx1 = fx + Math.max(40, dx * 0.5);
-    const cx2 = tx - Math.max(40, dx * 0.5);
+    const d = makePath(from.x, from.y, to.x, to.y);
+
+    // Midpoint for delete button
+    const mx = (from.x + to.x) / 2;
+    const my = (from.y + to.y) / 2;
 
     return (
-      <path
-        key={e.id}
-        d={`M${fx},${fy} C${cx1},${fy} ${cx2},${ty} ${tx},${ty}`}
-        fill="none"
-        stroke={t.edgeColor}
-        strokeWidth="1.5"
-        strokeDasharray="5 4"
-        markerEnd="url(#arrowhead)"
-        style={{ animation: "edgeDash 1.2s linear infinite" }}
-      />
+      <g key={e.id}>
+        {/* Invisible fat hitbox for easier clicking */}
+        <path
+          d={d}
+          fill="none"
+          stroke="transparent"
+          strokeWidth="12"
+          style={{ cursor: "pointer" }}
+          onClick={() => deleteEdge(e.id)}
+        />
+        <path
+          d={d}
+          fill="none"
+          stroke={t.edgeColor}
+          strokeWidth="1.5"
+          strokeDasharray="5 4"
+          markerEnd="url(#arrowhead)"
+          style={{ animation: "edgeDash 1.2s linear infinite", pointerEvents: "none" }}
+        />
+        {/* Delete button at midpoint */}
+        <g
+          transform={`translate(${mx}, ${my})`}
+          style={{ cursor: "pointer" }}
+          onClick={() => deleteEdge(e.id)}
+        >
+          <circle r="8" fill={t.surface} stroke={t.border2} strokeWidth="1" />
+          <line x1="-3.5" y1="-3.5" x2="3.5" y2="3.5" stroke={t.textMuted} strokeWidth="1.5" strokeLinecap="round" />
+          <line x1="3.5" y1="-3.5" x2="-3.5" y2="3.5" stroke={t.textMuted} strokeWidth="1.5" strokeLinecap="round" />
+        </g>
+      </g>
     );
   });
+
+  // ── Pending / in-progress connection path ──
+  let pendingPath = null;
+  if (connectingFrom) {
+    const fromNode = nodes.find(n => n.id === connectingFrom);
+    if (fromNode) {
+      const from = getRightHandle(fromNode, nodeRefs);
+      const d = makePath(from.x, from.y, dragPos.x, dragPos.y);
+      pendingPath = (
+        <path
+          d={d}
+          fill="none"
+          stroke={t.text}
+          strokeWidth="1.5"
+          strokeDasharray="6 4"
+          opacity="0.6"
+          style={{ pointerEvents: "none" }}
+        />
+      );
+    }
+  }
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: t.bg }}>
@@ -384,12 +535,19 @@ function FlowCanvas({ theme: t }) {
             </button>
           );
         })}
+        <div style={{ flex: 1 }} />
+        <span style={{ fontSize: 10, color: t.textDim, fontFamily: "monospace" }}>
+          drag right handle → drop on left handle to connect · click edge × to remove
+        </span>
       </div>
 
       {/* Canvas */}
       <div
         ref={canvasRef}
-        style={{ flex: 1, position: "relative", overflow: "hidden", cursor: "default" }}
+        style={{
+          flex: 1, position: "relative", overflow: "hidden",
+          cursor: connectingFrom ? "crosshair" : "default"
+        }}
         onMouseDown={onCanvasMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
@@ -397,8 +555,7 @@ function FlowCanvas({ theme: t }) {
       >
         {/* SVG layer: grid + edges */}
         <svg
-          ref={svgRef}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible" }}
         >
           <defs>
             <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse" x={pan.x % 24} y={pan.y % 24}>
@@ -410,19 +567,31 @@ function FlowCanvas({ theme: t }) {
           </defs>
           <style>{`@keyframes edgeDash { to { stroke-dashoffset: -36; } }`}</style>
           <rect width="100%" height="100%" fill="url(#grid)" />
-          {edgePaths}
+
+          {/* Edges are drawn in canvas-space (pan applied via node positions) */}
+          <g transform={`translate(${pan.x}, ${pan.y})`}>
+            {edgePaths}
+            {pendingPath}
+          </g>
         </svg>
 
         {/* Nodes layer */}
         <div style={{ position: "absolute", inset: 0 }}>
           {nodes.map(n => (
-            <div key={n.id} style={{ position: "absolute", left: n.x + pan.x, top: n.y + pan.y }}>
+            <div
+              key={n.id}
+              ref={el => { if (el) nodeRefs.current[n.id] = el; }}
+              style={{ position: "absolute", left: n.x + pan.x, top: n.y + pan.y }}
+            >
               <FlowNode
                 node={n}
                 selected={selected === n.id}
                 onDelete={onDelete}
                 onFieldChange={onFieldChange}
-                onMouseDown={e => onMouseDown(n.id, e)}
+                onMouseDown={e => onNodeMouseDown(n.id, e)}
+                onStartConnect={onStartConnect}
+                onCompleteConnect={onCompleteConnect}
+                connectingFrom={connectingFrom}
                 theme={t}
               />
             </div>
