@@ -5,8 +5,10 @@ import {
   SlidersHorizontal, ChevronDown, Play, Trash2, Save,
   Sun, Moon, FileText, Edit3, BookMarked, Check,
   Bookmark, Copy, CornerDownLeft, Server, AlertCircle,
-  CheckCircle2, ChevronRight, Terminal
+  CheckCircle2, ChevronRight, Terminal, Search, Plus, FolderOpen, MoreHorizontal, Hash, Clock,
+  ArrowLeft
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 // ─── BACKEND CONFIG ────────────────────────────────────────────────────────────
 const API = "http://localhost:3001/api";
@@ -71,7 +73,7 @@ const themes = {
 
 // ─── PRESET QUESTIONS ─────────────────────────────────────────────────────────
 const PRESETS = [
-  { Icon: AlignLeft,  label: "Summarize all",   prompt: "Summarize each uploaded paper in 2-3 sentences." },
+  { Icon: AlignLeft,  label: "Summarize all",   prompt: "Summarize each uploaded paper in 2–3 sentences. Do not repeat summaries." },
   { Icon: Layers,     label: "Compare methods", prompt: "What are the main methodological differences between these papers?" },
   { Icon: HelpCircle, label: "Limitations",     prompt: "What limitations are mentioned across the papers?" },
   { Icon: BookOpen,   label: "Common themes",   prompt: "What themes or topics recur across all the papers?" },
@@ -88,7 +90,7 @@ const NODE_META = {
 };
 const NODE_WIDTH = 220;
 
-// ─── SSE READER ───────────────────────────────────────────────────────────────
+// ─── SSE READER & ??? ───────────────────────────────────────────────────────────────
 async function* readSSE(response) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -105,6 +107,7 @@ async function* readSSE(response) {
     }
   }
 }
+ 
 
 // ─── SERVER STATUS BADGE ──────────────────────────────────────────────────────
 function ServerBadge({ status, theme: t }) {
@@ -691,244 +694,565 @@ function FlowCanvas({ theme: t, serverStatus }) {
   );
 }
 
-// ─── RAG ASSISTANT ────────────────────────────────────────────────────────────
-function RAGAssistant({ theme: t, serverStatus }) {
-  const [papers, setPapers]         = useState([]);
-  const [messages, setMessages]     = useState([
-    { role:"assistant", content:"Upload research papers (PDF, TXT, MD) and ask questions. I'll use LangChain + local embeddings to retrieve the most relevant chunks and ground my answers." }
+// ─── Notebook card on the home screen ────────────────────────────────────────
+function NotebookCard({ notebook, onOpen, onDelete, theme: t }) {
+  const [hover, setHover] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+ 
+  const totalChunks = notebook.papers.reduce((s, p) => s + (p.chunks || 0), 0);
+  const date = new Date(notebook.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+ 
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => { setHover(false); setMenuOpen(false); }}
+      onClick={() => onOpen(notebook.id)}
+      style={{
+        background: hover ? t.surface2 : t.surface,
+        border: `1px solid ${hover ? t.border2 : t.border}`,
+        borderRadius: 12,
+        padding: "18px 18px 14px",
+        cursor: "pointer",
+        transition: "all .15s ease",
+        position: "relative",
+        boxShadow: hover ? t.shadow : "none",
+      }}
+    >
+      {/* Folder icon + title */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
+          background: t.surface3, border: `1px solid ${t.border}`, flexShrink: 0,
+        }}>
+          <FolderOpen size={16} color={t.textMuted} strokeWidth={1.6} />
+        </div>
+        <button
+          onClick={e => { e.stopPropagation(); setMenuOpen(m => !m); }}
+          style={{ background: "none", border: "none", cursor: "pointer", color: t.textDim, display: "flex", padding: 4, borderRadius: 5, opacity: hover ? 1 : 0, transition: "opacity .1s" }}
+          onMouseEnter={e => e.currentTarget.style.color = t.textMuted}
+          onMouseLeave={e => e.currentTarget.style.color = t.textDim}
+        >
+          <MoreHorizontal size={14} />
+        </button>
+        {menuOpen && (
+          <div style={{
+            position: "absolute", top: 44, right: 12, background: t.surface, border: `1px solid ${t.border2}`,
+            borderRadius: 8, padding: "4px", zIndex: 20, boxShadow: t.shadow, minWidth: 130,
+          }} onClick={e => e.stopPropagation()}>
+            <button onClick={() => { onDelete(notebook.id); setMenuOpen(false); }}
+              style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 10px", borderRadius: 5, background: "none", border: "none", cursor: "pointer", color: t.errColor, fontSize: 12, fontFamily: "inherit" }}
+              onMouseEnter={e => e.currentTarget.style.background = t.surface2}
+              onMouseLeave={e => e.currentTarget.style.background = "none"}>
+              <Trash2 size={11} /> Delete notebook
+            </button>
+          </div>
+        )}
+      </div>
+ 
+      <p style={{ fontSize: 13, fontWeight: 600, color: t.text, marginBottom: 4, lineHeight: 1.3 }}>{notebook.name}</p>
+      <p style={{ fontSize: 11, color: t.textMuted, lineHeight: 1.5, marginBottom: 10, minHeight: 32,
+        overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+        {notebook.papers.length === 0 ? "No sources yet — add PDFs, TXT or MD files." : notebook.papers.map(p => p.name).join(", ")}
+      </p>
+ 
+      <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 10, borderTop: `1px solid ${t.border}` }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: t.textDim }}>
+          <FileText size={10} />{notebook.papers.length} source{notebook.papers.length !== 1 ? "s" : ""}
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: t.textDim }}>
+          <Hash size={10} />{totalChunks} chunks
+        </span>
+        <div style={{ flex: 1 }} />
+        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: t.textDim }}>
+          <Clock size={10} />{date}
+        </span>
+      </div>
+ 
+      {/* Arrow hint on hover */}
+      <div style={{
+        position: "absolute", right: 14, bottom: 14, opacity: hover ? 1 : 0, transition: "opacity .15s",
+        display: "flex", alignItems: "center", gap: 3, fontSize: 10, color: t.textMuted,
+      }}>
+        Open <ChevronRight size={10} />
+      </div>
+    </div>
+  );
+}
+ 
+// ─── Inside a notebook: sources sidebar + chat ────────────────────────────────
+function NotebookView({ notebook, onBack, onUpdateNotebook, theme: t, serverStatus }) {
+  const [papers, setPapers] = useState(notebook.papers || []);
+  const [messages, setMessages] = useState(notebook.messages || [
+    { role: "assistant", content: `Welcome to **${notebook.name}**. Upload sources and start asking questions — I'll ground my answers in your documents.` }
   ]);
-  const [input, setInput]   = useState("");
-  const [loading, setLoading] = useState(false);
+  const [input, setInput]       = useState("");
+  const [loading, setLoading]   = useState(false);
   const [ingesting, setIngesting] = useState(false);
-  const [dragOver, setDragOver]   = useState(false);
-  const [pipeline, setPipeline]   = useState(null);
-  const [sources, setSources]     = useState([]);
+  const [dragOver, setDragOver] = useState(false);
+  const [pipeline, setPipeline] = useState(null);
+  const [sources, setSources]   = useState([]);
   const fileRef  = useRef();
   const chatRef  = useRef();
-
-  // Sync paper list from server on mount
+ 
+  // Persist changes upward
   useEffect(() => {
-    if (serverStatus === "ok") {
-      fetch(`${API}/store/stats`).then(r=>r.json()).then(d=>{
-        if (d.papers) setPapers(d.papers);
-      }).catch(()=>{});
-    }
-  }, [serverStatus]);
-
+    onUpdateNotebook(notebook.id, { papers, messages });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [papers, messages]);
+ 
   const ingest = useCallback(async (files) => {
     if (serverStatus !== "ok") {
-      setMessages(m=>[...m,{role:"assistant",content:"⚠ Backend not running. Please start the server first (see setup instructions)."}]);
+      setMessages(m => [...m, { role: "assistant", content: "⚠ Backend not running. Please start the server first." }]);
       return;
     }
     setIngesting(true);
     const form = new FormData();
+    // Tag files with notebook id so backend can namespace them
+    form.append("notebookId", notebook.id);
     for (const f of files) form.append("files", f);
-
     try {
-      const resp = await fetch(`${API}/ingest`, { method:"POST", body:form });
+      const resp = await fetch(`${API}/ingest`, { method: "POST", body: form });
       const data = await resp.json();
-      const newPapers = data.results.filter(r=>r.status==="ok");
-      setPapers(p=>[...p, ...newPapers]);
-      const msg = newPapers.length
-        ? `✓ Ingested ${newPapers.map(p=>`"${p.name}" (${p.chunks} chunks)`).join(", ")} using LangChain RecursiveCharacterTextSplitter + all-MiniLM-L6-v2 embeddings.`
-        : data.results.map(r=>`${r.name}: ${r.reason||r.status}`).join("; ");
-      setMessages(m=>[...m,{role:"assistant",content:msg}]);
+      const newPapers = (data.results || []).filter(r => r.status === "ok");
+      // Deduplicate by name
+      setPapers(prev => {
+        const existing = new Set(prev.map(p => p.name));
+        return [...prev, ...newPapers.filter(p => !existing.has(p.name))];
+      });
+      const ok = newPapers.length;
+      const msg = ok
+        ? `✓ Ingested ${newPapers.map(p => `"${p.name}" (${p.chunks} chunks)`).join(", ")} using LangChain + all-MiniLM-L6-v2.`
+        : (data.results || []).map(r => `${r.name}: ${r.reason || r.status}`).join("; ");
+      setMessages(m => [...m, { role: "assistant", content: msg }]);
     } catch (err) {
-      setMessages(m=>[...m,{role:"assistant",content:`Ingest error: ${err.message}`}]);
+      setMessages(m => [...m, { role: "assistant", content: `Ingest error: ${err.message}` }]);
     }
     setIngesting(false);
-  }, [serverStatus]);
-
+  }, [serverStatus, notebook.id]);
+ 
   const query = useCallback(async (q) => {
     if (!q.trim()) return;
     setInput("");
-    setMessages(m=>[...m,{role:"user",content:q}]);
+    setMessages(m => [...m, { role: "user", content: q }]);
     setLoading(true); setSources([]);
-
+ 
     if (serverStatus !== "ok") {
-      setMessages(m=>[...m,{role:"assistant",content:"⚠ Backend not running. Please start the server first."}]);
-      setLoading(false);
-      return;
+      setMessages(m => [...m, { role: "assistant", content: "⚠ Backend not running." }]);
+      setLoading(false); return;
     }
-
-    const steps = [];
-    setPipeline(steps);
-
+ 
+    setPipeline([]);
     try {
       const resp = await fetch(`${API}/query`, {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({ question:q, topK:6 }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q, topK: 6, notebookId: notebook.id }),
       });
-
+ 
       let fullText = "";
       let msgAdded = false;
-
+ 
       for await (const event of readSSE(resp)) {
         if (event.type === "status") {
-          setPipeline(p=>[...(p||[]), event.text]);
+          setPipeline(p => [...(p || []), event.text]);
         } else if (event.type === "sources") {
-          setSources(event.sources || []);
+          // Deduplicate sources
+          const unique = [...new Set(event.sources || [])];
+          setSources(unique);
         } else if (event.type === "token") {
           fullText += event.token;
           if (!msgAdded) {
-            setMessages(m=>[...m,{role:"assistant",content:fullText,streaming:true}]);
+            setMessages(m => [...m, { role: "assistant", content: fullText, streaming: true }]);
             msgAdded = true;
           } else {
-            setMessages(m=>m.map((msg,i)=>i===m.length-1 ? {...msg,content:fullText} : msg));
+            setMessages(m => m.map((msg, i) => i === m.length - 1 ? { ...msg, content: fullText } : msg));
           }
         } else if (event.type === "done") {
-          setMessages(m=>m.map((msg,i)=>i===m.length-1 ? {...msg,content:event.fullText||fullText,streaming:false} : msg));
+          setMessages(m => m.map((msg, i) => i === m.length - 1 ? { ...msg, content: event.fullText || fullText, streaming: false } : msg));
         } else if (event.type === "error") {
-          setMessages(m=>[...m,{role:"assistant",content:`Error: ${event.error}`}]);
+          setMessages(m => [...m, { role: "assistant", content: `Error: ${event.error}` }]);
         }
       }
     } catch (err) {
-      setMessages(m=>[...m,{role:"assistant",content:`Connection error: ${err.message}`}]);
+      setMessages(m => [...m, { role: "assistant", content: `Connection error: ${err.message}` }]);
     }
-
+ 
     setLoading(false); setPipeline(null);
-    setTimeout(()=>chatRef.current?.scrollTo({top:999999,behavior:"smooth"}),80);
-  }, [serverStatus]);
-
+    setTimeout(() => chatRef.current?.scrollTo({ top: 999999, behavior: "smooth" }), 80);
+  }, [serverStatus, notebook.id]);
+ 
   const removePaper = async (name) => {
-    setPapers(p=>p.filter(x=>x.name!==name));
-    try { await fetch(`${API}/store/${encodeURIComponent(name)}`, {method:"DELETE"}); } catch {}
+    setPapers(p => p.filter(x => x.name !== name));
+    try { await fetch(`${API}/store/${encodeURIComponent(name)}`, { method: "DELETE" }); } catch {}
   };
-
+ 
   return (
-    <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
-      {/* Sidebar */}
-      <aside style={{ width:272, flexShrink:0, display:"flex", flexDirection:"column", background:t.surface, borderRight:`1px solid ${t.border}` }}>
-        <div style={{ padding:"14px 14px 10px", borderBottom:`1px solid ${t.border}` }}>
-          <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:4 }}>
-            <Database size={15} color={t.textMuted} strokeWidth={1.8}/>
-            <span style={{ fontWeight:600, fontSize:13, color:t.text }}>Vector Store</span>
+    <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      {/* ── Left sidebar: sources ── */}
+      <aside style={{
+        width: 260, flexShrink: 0, display: "flex", flexDirection: "column",
+        background: t.surface, borderRight: `1px solid ${t.border}`,
+      }}>
+        {/* Back + title */}
+        <div style={{ padding: "12px 12px 10px", borderBottom: `1px solid ${t.border}` }}>
+          <button onClick={onBack}
+            style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", color: t.textMuted, fontSize: 11, padding: "3px 0 8px", fontFamily: "inherit" }}
+            onMouseEnter={e => e.currentTarget.style.color = t.text}
+            onMouseLeave={e => e.currentTarget.style.color = t.textMuted}>
+            <ArrowLeft size={11} /> All notebooks
+          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <FolderOpen size={14} color={t.textMuted} strokeWidth={1.6} />
+            <span style={{ fontWeight: 600, fontSize: 13, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{notebook.name}</span>
           </div>
-          <p style={{ fontSize:11, color:t.textMuted }}>LangChain + all-MiniLM-L6-v2 (local)</p>
+          <p style={{ fontSize: 10, color: t.textDim, marginTop: 3 }}>
+            {papers.length} source{papers.length !== 1 ? "s" : ""} · {papers.reduce((s, p) => s + (p.chunks || 0), 0)} vectors
+          </p>
         </div>
-
+ 
         {/* Drop zone */}
-        <div style={{ margin:"10px 10px 6px", borderRadius:8, border:`1.5px dashed ${dragOver?t.text:t.border2}`, background:dragOver?t.surface2:"transparent", padding:"14px 10px", textAlign:"center", cursor:"pointer", transition:"all .2s" }}
-          onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)}
-          onDrop={e=>{e.preventDefault();setDragOver(false);ingest([...e.dataTransfer.files]);}}
-          onClick={()=>fileRef.current.click()}>
-          <input ref={fileRef} type="file" multiple accept=".pdf,.txt,.md" style={{display:"none"}} onChange={e=>ingest([...e.target.files])}/>
-          {ingesting ? <Loader2 size={18} color={t.textMuted} style={{margin:"0 auto 6px",display:"block",animation:"spin .7s linear infinite"}}/> : <Upload size={18} color={dragOver?t.text:t.textDim} style={{margin:"0 auto 6px",display:"block"}}/>}
-          <p style={{ fontSize:11, color:ingesting?t.text:t.textMuted }}>{ingesting?"Processing with pdfParse + LangChain…":"Drop files or click to upload"}</p>
-          <p style={{ fontSize:10, color:t.textDim, marginTop:2 }}>PDF · TXT · MD</p>
+        <div
+          style={{
+            margin: "10px 10px 6px", borderRadius: 8,
+            border: `1.5px dashed ${dragOver ? t.text : t.border2}`,
+            background: dragOver ? t.surface2 : "transparent",
+            padding: "12px 8px", textAlign: "center", cursor: "pointer", transition: "all .2s",
+          }}
+          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={e => { e.preventDefault(); setDragOver(false); ingest([...e.dataTransfer.files]); }}
+          onClick={() => fileRef.current.click()}
+        >
+          <input ref={fileRef} type="file" multiple accept=".pdf,.txt,.md" style={{ display: "none" }}
+            onChange={e => ingest([...e.target.files])} />
+          {ingesting
+            ? <Loader2 size={16} color={t.textMuted} style={{ margin: "0 auto 5px", display: "block", animation: "spin .7s linear infinite" }} />
+            : <Upload size={16} color={dragOver ? t.text : t.textDim} style={{ margin: "0 auto 5px", display: "block" }} />
+          }
+          <p style={{ fontSize: 11, color: ingesting ? t.text : t.textMuted }}>
+            {ingesting ? "Processing…" : "Add sources"}
+          </p>
+          <p style={{ fontSize: 10, color: t.textDim, marginTop: 1 }}>PDF · TXT · MD</p>
         </div>
-
-        {/* Papers */}
-        <div style={{ flex:1, overflowY:"auto", padding:"0 10px 10px", display:"flex", flexDirection:"column", gap:6 }}>
-          {papers.length===0
-            ? <p style={{ fontSize:11, color:t.textDim, textAlign:"center", marginTop:20 }}>No papers ingested</p>
-            : papers.map(p=>(
-              <div key={p.name} style={{ display:"flex", alignItems:"flex-start", gap:8, background:t.surface2, border:`1px solid ${t.border}`, borderRadius:7, padding:"7px 8px" }}>
-                <File size={12} color={t.textMuted} style={{marginTop:1,flexShrink:0}}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <p style={{ fontSize:11, color:t.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</p>
-                  <p style={{ fontSize:10, color:t.textMuted }}>{p.chunks} chunks · {((p.size||0)/1024).toFixed(1)}KB</p>
+ 
+        {/* File list */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 10px 10px", display: "flex", flexDirection: "column", gap: 5 }}>
+          {papers.length === 0
+            ? <p style={{ fontSize: 11, color: t.textDim, textAlign: "center", marginTop: 18 }}>No sources yet</p>
+            : papers.map(p => (
+              <div key={p.name} style={{
+                display: "flex", alignItems: "flex-start", gap: 7,
+                background: t.surface2, border: `1px solid ${t.border}`, borderRadius: 7, padding: "7px 8px",
+              }}>
+                <File size={11} color={t.textMuted} style={{ marginTop: 1, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 11, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</p>
+                  <p style={{ fontSize: 10, color: t.textMuted }}>{p.chunks} chunks · {((p.size || 0) / 1024).toFixed(1)}KB</p>
                 </div>
-                <button onClick={()=>removePaper(p.name)} style={{background:"none",border:"none",cursor:"pointer",color:t.textDim,display:"flex",padding:2}}
-                  onMouseEnter={e=>e.currentTarget.style.color=t.text} onMouseLeave={e=>e.currentTarget.style.color=t.textDim}><X size={11}/></button>
+                <button onClick={() => removePaper(p.name)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: t.textDim, display: "flex", padding: 2 }}
+                  onMouseEnter={e => e.currentTarget.style.color = t.text}
+                  onMouseLeave={e => e.currentTarget.style.color = t.textDim}>
+                  <X size={10} />
+                </button>
               </div>
             ))
           }
         </div>
-
-        {papers.length > 0 && (
-          <div style={{ margin:"0 10px 10px", padding:"7px 10px", borderRadius:7, background:t.surface2, border:`1px solid ${t.border}` }}>
-            <p style={{ fontSize:11, color:t.textMuted }}>
-              <strong style={{color:t.text}}>{papers.reduce((s,p)=>s+(p.chunks||0),0)}</strong> vectors · <strong style={{color:t.text}}>{papers.length}</strong> paper{papers.length!==1?"s":""}
-            </p>
-            <p style={{ fontSize:10, color:t.textDim, marginTop:3 }}>MemoryVectorStore (LangChain)</p>
-          </div>
-        )}
-
+ 
         {/* Sources from last query */}
         {sources.length > 0 && (
-          <div style={{ margin:"0 10px 10px", padding:"8px 10px", borderRadius:7, background:t.surface2, border:`1px solid ${t.border}` }}>
-            <p style={{ fontSize:10, color:t.textDim, marginBottom:5, letterSpacing:".06em" }}>LAST QUERY SOURCES</p>
-            {sources.map(s=><p key={s} style={{ fontSize:10.5, color:t.textMuted, padding:"2px 0" }}>• {s}</p>)}
+          <div style={{ margin: "0 10px 10px", padding: "8px 10px", borderRadius: 7, background: t.surface2, border: `1px solid ${t.border}` }}>
+            <p style={{ fontSize: 9, color: t.textDim, marginBottom: 5, letterSpacing: ".07em" }}>CITED IN LAST ANSWER</p>
+            {sources.map(s => (
+              <p key={s} style={{ fontSize: 10.5, color: t.textMuted, padding: "2px 0" }}>• {s}</p>
+            ))}
           </div>
         )}
       </aside>
-
-      {/* Chat */}
-      <main style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", background:t.bg }}>
+ 
+      {/* ── Main chat area ── */}
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: t.bg }}>
         {/* Presets */}
-        <div style={{ display:"flex", gap:6, padding:"8px 14px", borderBottom:`1px solid ${t.border}`, flexWrap:"wrap", background:t.surface }}>
-          {PRESETS.map(({Icon:PI,label,prompt})=>(
-            <button key={label} onClick={()=>query(prompt)} style={{ display:"flex",alignItems:"center",gap:5,padding:"5px 11px",borderRadius:6,fontSize:11,border:`1px solid ${t.border}`,background:t.surface2,color:t.textMuted,cursor:"pointer" }}
-              onMouseEnter={e=>{e.currentTarget.style.borderColor=t.border2;e.currentTarget.style.color=t.text;}}
-              onMouseLeave={e=>{e.currentTarget.style.borderColor=t.border;e.currentTarget.style.color=t.textMuted;}}>
-              <PI size={12} color={t.textMuted}/>{label}
+        <div style={{ display: "flex", gap: 6, padding: "8px 14px", borderBottom: `1px solid ${t.border}`, flexWrap: "wrap", background: t.surface }}>
+          {PRESETS.map(({ Icon: PI, label, prompt }) => (
+            <button key={label} onClick={() => query(prompt)} style={{
+              display: "flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 6,
+              fontSize: 11, border: `1px solid ${t.border}`, background: t.surface2, color: t.textMuted, cursor: "pointer",
+            }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = t.border2; e.currentTarget.style.color = t.text; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.color = t.textMuted; }}>
+              <PI size={12} color={t.textMuted} />{label}
             </button>
           ))}
         </div>
-
+ 
         {/* Messages */}
-        <div ref={chatRef} style={{ flex:1, overflowY:"auto", padding:"16px", display:"flex", flexDirection:"column", gap:14 }}>
-          {messages.map((m,i)=>(
-            <div key={i} style={{ display:"flex", justifyContent:m.role==="user"?"flex-end":"flex-start", gap:8, alignItems:"flex-start", animation:"fadeIn .2s ease forwards" }}>
-              {m.role==="assistant" && (
-                <div style={{ width:28, height:28, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", background:t.surface2, border:`1px solid ${t.border}`, flexShrink:0, marginTop:2 }}>
-                  <Brain size={13} color={t.textMuted} strokeWidth={1.8}/>
+        <div ref={chatRef} style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
+          {messages.map((m, i) => (
+            <div key={i} style={{
+              display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start",
+              gap: 8, alignItems: "flex-start", animation: "fadeIn .2s ease forwards",
+            }}>
+              {m.role === "assistant" && (
+                <div style={{
+                  width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center",
+                  justifyContent: "center", background: t.surface2, border: `1px solid ${t.border}`,
+                  flexShrink: 0, marginTop: 2,
+                }}>
+                  <Brain size={13} color={t.textMuted} strokeWidth={1.8} />
                 </div>
               )}
-              <div style={{ maxWidth:"70%", borderRadius:12, padding:"10px 14px", fontSize:13, lineHeight:1.65,
-                background:m.role==="user"?t.msgUser:t.surface,
-                color:m.role==="user"?t.msgUserTxt:t.text,
-                border:m.role==="assistant"?`1px solid ${t.border}`:"none",
-                whiteSpace:"pre-wrap" }}>
-                {m.content}
-                {m.streaming && <span style={{ display:"inline-block", width:8, height:14, background:t.text, marginLeft:2, animation:"blink .8s step-end infinite", verticalAlign:"text-bottom" }}/>}
+              <div style={{
+                maxWidth: "70%", borderRadius: 12, padding: "10px 14px", fontSize: 13, lineHeight: 1.65,
+                background: m.role === "user" ? t.msgUser : t.surface,
+                color: m.role === "user" ? t.msgUserTxt : t.text,
+                border: m.role === "assistant" ? `1px solid ${t.border}` : "none",
+                whiteSpace: "pre-wrap",
+              }}>
+                <ReactMarkdown>{m.content}</ReactMarkdown>
+                {m.streaming && (
+                  <span style={{
+                    display: "inline-block", width: 8, height: 14, background: t.text,
+                    marginLeft: 2, animation: "blink .8s step-end infinite", verticalAlign: "text-bottom",
+                  }} />
+                )}
               </div>
             </div>
           ))}
-
-          {loading && !messages[messages.length-1]?.streaming && (
-            <div style={{ display:"flex", gap:8, alignItems:"flex-start" }}>
-              <div style={{ width:28, height:28, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", background:t.surface2, border:`1px solid ${t.border}`, flexShrink:0, marginTop:2 }}>
-                <Brain size={13} color={t.textMuted} strokeWidth={1.8}/>
+ 
+          {loading && !messages[messages.length - 1]?.streaming && (
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center",
+                justifyContent: "center", background: t.surface2, border: `1px solid ${t.border}`,
+                flexShrink: 0, marginTop: 2,
+              }}>
+                <Brain size={13} color={t.textMuted} strokeWidth={1.8} />
               </div>
-              <div style={{ borderRadius:12, padding:"10px 14px", background:t.surface, border:`1px solid ${t.border}` }}>
+              <div style={{ borderRadius: 12, padding: "10px 14px", background: t.surface, border: `1px solid ${t.border}` }}>
                 {pipeline?.length ? (
-                  <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
-                    {pipeline.map((s,i)=>(
-                      <div key={i} style={{ display:"flex", alignItems:"center", gap:6, fontSize:11 }}>
-                        <div style={{ width:5, height:5, borderRadius:"50%", background:i===pipeline.length-1?t.text:t.textMuted, flexShrink:0 }}/>
-                        <span style={{ color:i===pipeline.length-1?t.text:t.textMuted, fontFamily:"monospace" }}>{s}</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    {pipeline.map((s, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+                        <div style={{ width: 5, height: 5, borderRadius: "50%", background: i === pipeline.length - 1 ? t.text : t.textMuted, flexShrink: 0 }} />
+                        <span style={{ color: i === pipeline.length - 1 ? t.text : t.textMuted, fontFamily: "monospace" }}>{s}</span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div style={{ display:"flex", gap:5 }}>
-                    {[0,1,2].map(i=><div key={i} style={{ width:7, height:7, borderRadius:"50%", background:t.textMuted, animation:`dot 1.4s ease infinite`, animationDelay:`${i*.2}s` }}/>)}
+                  <div style={{ display: "flex", gap: 5 }}>
+                    {[0, 1, 2].map(i => (
+                      <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: t.textMuted, animation: `dot 1.4s ease infinite`, animationDelay: `${i * .2}s` }} />
+                    ))}
                   </div>
                 )}
               </div>
             </div>
           )}
         </div>
-
+ 
         {/* Input */}
-        <div style={{ padding:"12px 16px", borderTop:`1px solid ${t.border}`, background:t.surface }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10, background:t.inputBg, border:`1px solid ${t.border}`, borderRadius:12, padding:"8px 10px 8px 14px" }}>
-            <input style={{ flex:1, background:"transparent", border:"none", outline:"none", fontSize:13, color:t.text, fontFamily:"inherit" }}
-              placeholder={papers.length?"Ask about your papers…":"Upload papers, then ask questions…"}
-              value={input} onChange={e=>setInput(e.target.value)}
-              onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&query(input)}/>
-            <button onClick={()=>query(input)} disabled={loading||!input.trim()} style={{ width:32, height:32, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center",
-              cursor:loading||!input.trim()?"default":"pointer",
-              background:loading||!input.trim()?t.surface2:t.text,
-              border:`1px solid ${t.border}` }}>
-              {loading ? <Loader2 size={14} color={t.textMuted} style={{animation:"spin .7s linear infinite"}}/> : <Send size={14} color={!input.trim()?t.textMuted:t.bg}/>}
+        <div style={{ padding: "12px 16px", borderTop: `1px solid ${t.border}`, background: t.surface }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10, background: t.inputBg,
+            border: `1px solid ${t.border}`, borderRadius: 12, padding: "8px 10px 8px 14px",
+          }}>
+            <input
+              style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 13, color: t.text, fontFamily: "inherit" }}
+              placeholder={papers.length ? "Ask about your sources…" : "Upload sources first, then ask questions…"}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && !e.shiftKey && query(input)}
+            />
+            <button onClick={() => query(input)} disabled={loading || !input.trim()} style={{
+              width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: loading || !input.trim() ? "default" : "pointer",
+              background: loading || !input.trim() ? t.surface2 : t.text,
+              border: `1px solid ${t.border}`,
+            }}>
+              {loading
+                ? <Loader2 size={14} color={t.textMuted} style={{ animation: "spin .7s linear infinite" }} />
+                : <Send size={14} color={!input.trim() ? t.textMuted : t.bg} />
+              }
             </button>
           </div>
         </div>
       </main>
+    </div>
+  );
+}
+ 
+// ─── Home screen: notebook grid ───────────────────────────────────────────────
+let nbCtr = 3;
+const DEFAULT_NOTEBOOKS = [
+  {
+    id: "nb1",
+    name: "Literature Review",
+    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
+    papers: [],
+    messages: [{ role: "assistant", content: "Welcome to **Literature Review**. Upload your papers and I'll help you analyze them." }],
+  },
+  {
+    id: "nb2",
+    name: "Research Notes",
+    createdAt: Date.now() - 1000 * 60 * 60 * 5,
+    papers: [],
+    messages: [{ role: "assistant", content: "Welcome to **Research Notes**. Upload your sources and start asking questions." }],
+  },
+];
+ 
+export function RAGAssistant({ theme: t, serverStatus }) {
+  const [notebooks, setNotebooks] = useState(DEFAULT_NOTEBOOKS);
+  const [activeId, setActiveId]   = useState(null);
+  const [creating, setCreating]   = useState(false);
+  const [newName, setNewName]     = useState("");
+  const [search, setSearch]       = useState("");
+  const nameInputRef = useRef();
+ 
+  useEffect(() => {
+    if (creating) setTimeout(() => nameInputRef.current?.focus(), 50);
+  }, [creating]);
+ 
+  const createNotebook = () => {
+    const name = newName.trim() || `Notebook ${nbCtr + 1}`;
+    const nb = {
+      id: `nb${++nbCtr}`,
+      name,
+      createdAt: Date.now(),
+      papers: [],
+      messages: [{ role: "assistant", content: `Welcome to **${name}**. Upload sources and start asking questions.` }],
+    };
+    setNotebooks(n => [...n, nb]);
+    setNewName("");
+    setCreating(false);
+    setActiveId(nb.id);
+  };
+ 
+  const deleteNotebook = (id) => setNotebooks(n => n.filter(nb => nb.id !== id));
+ 
+  const updateNotebook = (id, patch) => {
+    setNotebooks(n => n.map(nb => nb.id === id ? { ...nb, ...patch } : nb));
+  };
+ 
+  const activeNotebook = notebooks.find(nb => nb.id === activeId);
+ 
+  // ── If a notebook is open, show it ─────────────────────────────────────────
+  if (activeNotebook) {
+    return (
+      <NotebookView
+        notebook={activeNotebook}
+        onBack={() => setActiveId(null)}
+        onUpdateNotebook={updateNotebook}
+        theme={t}
+        serverStatus={serverStatus}
+      />
+    );
+  }
+ 
+  // ── Home screen ─────────────────────────────────────────────────────────────
+  const filtered = notebooks.filter(nb =>
+    nb.name.toLowerCase().includes(search.toLowerCase())
+  );
+ 
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", background: t.bg, overflow: "hidden" }}>
+      {/* Top bar */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10, padding: "12px 20px",
+        borderBottom: `1px solid ${t.border}`, background: t.surface, flexShrink: 0,
+      }}>
+        <Database size={14} color={t.textMuted} strokeWidth={1.6} />
+        <span style={{ fontWeight: 600, fontSize: 14, color: t.text }}>RAG Research</span>
+        <div style={{ flex: 1 }} />
+ 
+        {/* Search */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 7, background: t.inputBg,
+          border: `1px solid ${t.border}`, borderRadius: 8, padding: "5px 10px",
+        }}>
+          <Search size={12} color={t.textDim} />
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search notebooks…"
+            style={{ background: "transparent", border: "none", outline: "none", fontSize: 12, color: t.text, width: 160, fontFamily: "inherit" }}
+          />
+        </div>
+ 
+        {/* New notebook */}
+        {creating ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <input
+              ref={nameInputRef}
+              value={newName} onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") createNotebook(); if (e.key === "Escape") setCreating(false); }}
+              placeholder="Notebook name…"
+              style={{
+                background: t.inputBg, border: `1px solid ${t.border2}`, borderRadius: 7,
+                padding: "5px 10px", fontSize: 12, color: t.text, fontFamily: "inherit", outline: "none", width: 160,
+              }}
+            />
+            <button onClick={createNotebook} style={{
+              display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 7,
+              fontSize: 12, background: t.text, color: t.bg, border: "none", cursor: "pointer", fontFamily: "inherit",
+            }}>
+              <Check size={11} /> Create
+            </button>
+            <button onClick={() => setCreating(false)} style={{ background: "none", border: "none", cursor: "pointer", color: t.textDim, display: "flex" }}>
+              <X size={13} />
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setCreating(true)} style={{
+            display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 8,
+            fontSize: 12, fontWeight: 500, background: t.text, color: t.bg, border: "none", cursor: "pointer", fontFamily: "inherit",
+          }}
+            onMouseEnter={e => e.currentTarget.style.opacity = ".85"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+            <Plus size={13} /> New notebook
+          </button>
+        )}
+      </div>
+ 
+      {/* Grid */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px" }}>
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: "center", marginTop: 60 }}>
+            <FolderOpen size={32} color={t.textDim} style={{ margin: "0 auto 12px", display: "block" }} />
+            <p style={{ fontSize: 14, color: t.textMuted, marginBottom: 6 }}>
+              {search ? "No notebooks match your search." : "No notebooks yet."}
+            </p>
+            {!search && (
+              <p style={{ fontSize: 12, color: t.textDim }}>Create one to get started.</p>
+            )}
+          </div>
+        ) : (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+            gap: 14,
+          }}>
+            {filtered.map(nb => (
+              <NotebookCard key={nb.id} notebook={nb} onOpen={setActiveId} onDelete={deleteNotebook} theme={t} />
+            ))}
+ 
+            {/* Ghost "new" card */}
+            <div
+              onClick={() => setCreating(true)}
+              style={{
+                border: `1.5px dashed ${t.border2}`, borderRadius: 12, padding: "18px 18px 14px",
+                cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center",
+                justifyContent: "center", gap: 8, minHeight: 140, transition: "all .15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = t.textDim; e.currentTarget.style.background = t.surface2; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = t.border2; e.currentTarget.style.background = "transparent"; }}
+            >
+              <Plus size={20} color={t.textDim} />
+              <p style={{ fontSize: 12, color: t.textDim }}>New notebook</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1059,7 +1383,6 @@ export default function App() {
           {/* Server status */}
           <button onClick={()=>setShowSetup(true)} style={{ background:"none", border:`1px solid ${t.border}`, borderRadius:7, padding:"5px 10px", cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}
             onMouseEnter={e=>e.currentTarget.style.borderColor=t.border2} onMouseLeave={e=>e.currentTarget.style.borderColor=t.border}>
-            <Server size={11} color={t.textMuted}/>
             <ServerBadge status={serverStatus} theme={t}/>
           </button>
 
