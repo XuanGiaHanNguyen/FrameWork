@@ -1,0 +1,11 @@
+{
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "scripts": {
+    "dev": "concurrently -n OLLAMA,BACKEND,FRONTEND -c magenta,blue,green \"npm run ollama\" \"npm run backend\" \"npm run frontend\"",
+    "ollama": "ollama serve",
+    "backend": "cd backend && npm run dev",
+    "frontend": "cd frontend && npm run dev"
+  }
+}
