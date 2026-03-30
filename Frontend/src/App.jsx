@@ -3,10 +3,9 @@ import {
   Brain, Upload, File, X, Send, Layers, AlignLeft, HelpCircle,
   BookOpen, Loader2, Workflow, Zap, Database, Globe,
   SlidersHorizontal, ChevronDown, Plus, Play, Trash2, Save,
-  Sun, Moon, FileText
+  Sun, Moon, FileText, Edit3, BookMarked, Check, ChevronRight,
+  FolderOpen, Bookmark, Copy, CornerDownLeft
 } from "lucide-react";
-import cube from "../src/assets/cube.png"
-import cubedark from "../src/assets/cubedark.png"
 
 // ─── UTILS ────────────────────────────────────────────────────────────────────
 const cosineSim = (a, b) => {
@@ -37,6 +36,7 @@ const themes = {
     bg:        "#171717",
     surface:   "#191919",
     surface2:  "#1a1a1a",
+    surface3:  "#222222",
     border:    "#242424",
     border2:   "#2e2e2e",
     text:      "#f0f0f0",
@@ -52,11 +52,16 @@ const themes = {
     handle:    "#f0f0f0",
     edgeColor: "#888888",
     gridDot:   "#1e1e1e",
+    savedTag:  "#2a2a1a",
+    savedBorder:"#4a4a2a",
+    savedText: "#c8c060",
+    panelBg:   "#111111",
   },
   light: {
     bg:        "#fafafa",
     surface:   "#ffffff",
     surface2:  "#f2f2f2",
+    surface3:  "#ebebeb",
     border:    "#e0e0e0",
     border2:   "#d0d0d0",
     text:      "#3d3d3d",
@@ -72,6 +77,10 @@ const themes = {
     handle:    "#3d3d3d",
     edgeColor: "#999999",
     gridDot:   "#e8e8e8",
+    savedTag:  "#fefce8",
+    savedBorder:"#d4c44a",
+    savedText: "#8a7a10",
+    panelBg:   "#f5f5f5",
   }
 };
 
@@ -93,23 +102,308 @@ const NODE_META = {
   transform: { label: "Transform",     Icon: SlidersHorizontal,shade: "medium" },
 };
 
-// ─── NODE SIZE ─────────────────────────────────────────────────────────────────
 const NODE_WIDTH = 220;
-// We measure node height dynamically, but use this for handle vertical center
-// handles are rendered at top:50% so we just use 50% of clientHeight
+
+function getRightHandle(node, nodeRefs) {
+  const el = nodeRefs.current[node.id];
+  const h = el ? el.offsetHeight : 80;
+  return { x: node.x + NODE_WIDTH, y: node.y + h / 2 };
+}
+function getLeftHandle(node, nodeRefs) {
+  const el = nodeRefs.current[node.id];
+  const h = el ? el.offsetHeight : 80;
+  return { x: node.x, y: node.y + h / 2 };
+}
+
+// ─── PROMPT EDITOR PANEL ──────────────────────────────────────────────────────
+function PromptEditorPanel({ node, savedPrompts, onSave, onClose, onApplySaved, onDeleteSaved, theme: t }) {
+  const [systemVal, setSystemVal] = useState(
+    node.fields?.find(f => f.placeholder?.includes("System"))?.value || ""
+  );
+  const [userVal, setUserVal] = useState(
+    node.fields?.find(f => f.placeholder?.includes("User"))?.value || ""
+  );
+  const [promptName, setPromptName] = useState(node.label || "");
+  const [saveNameInput, setSaveNameInput] = useState("");
+  const [tab, setTab] = useState("edit"); // "edit" | "library"
+  const [copied, setCopied] = useState(null);
+
+  const handleSave = () => {
+    onSave(node.id, systemVal, userVal);
+  };
+
+  const handleSaveToLibrary = () => {
+    if (!saveNameInput.trim()) return;
+    onSave(node.id, systemVal, userVal, saveNameInput.trim());
+    setSaveNameInput("");
+  };
+
+  const copyToClipboard = (text, id) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(id);
+      setTimeout(() => setCopied(null), 1500);
+    });
+  };
+
+  return (
+    <div style={{
+      position: "absolute", right: 0, top: 0, bottom: 0,
+      width: 400, zIndex: 50,
+      background: t.panelBg,
+      borderLeft: `1px solid ${t.border2}`,
+      display: "flex", flexDirection: "column",
+      boxShadow: "-8px 0 32px rgba(0,0,0,.25)",
+      fontFamily: "'DM Mono', 'Fira Mono', monospace",
+      animation: "slideIn .2s ease forwards"
+    }}>
+      {/* Panel header */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "12px 14px", borderBottom: `1px solid ${t.border}`,
+        background: t.surface,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Edit3 size={13} color={t.textMuted} />
+          <span style={{ fontSize: 12, fontWeight: 600, color: t.text, letterSpacing: "-.01em" }}>
+            Prompt Editor
+          </span>
+          <span style={{
+            fontSize: 10, padding: "1px 7px", borderRadius: 4,
+            background: t.savedTag, color: t.savedText,
+            border: `1px solid ${t.savedBorder}`
+          }}>
+            {node.label}
+          </span>
+        </div>
+        <button
+          onClick={onClose}
+          style={{ background: "none", border: "none", cursor: "pointer", color: t.textMuted, display: "flex", padding: 4, borderRadius: 5 }}
+          onMouseEnter={e => e.currentTarget.style.color = t.text}
+          onMouseLeave={e => e.currentTarget.style.color = t.textMuted}
+        >
+          <X size={13} />
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: "flex", borderBottom: `1px solid ${t.border}`, background: t.surface }}>
+        {[
+          { id: "edit", Icon: Edit3, label: "Edit Prompt" },
+          { id: "library", Icon: BookMarked, label: `Library (${savedPrompts.length})` },
+        ].map(({ id, Icon: TIcon, label }) => (
+          <button key={id} onClick={() => setTab(id)}
+            style={{
+              flex: 1, padding: "9px 0", display: "flex", alignItems: "center", justifyContent: "center",
+              gap: 6, fontSize: 11, cursor: "pointer", transition: "all .15s",
+              background: "transparent", border: "none",
+              borderBottom: tab === id ? `2px solid ${t.text}` : "2px solid transparent",
+              color: tab === id ? t.text : t.textMuted,
+              fontFamily: "inherit",
+            }}
+          >
+            <TIcon size={12} />{label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "edit" && (
+        <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 0 }}>
+          {/* System prompt */}
+          <div style={{ padding: "14px 14px 10px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
+              <span style={{ fontSize: 10, color: t.textMuted, letterSpacing: ".08em" }}>SYSTEM PROMPT</span>
+              <button
+                onClick={() => copyToClipboard(systemVal, "sys")}
+                style={{ background: "none", border: "none", cursor: "pointer", color: t.textDim, display: "flex", gap: 4, alignItems: "center", fontSize: 10, padding: "2px 6px", borderRadius: 4, fontFamily: "inherit" }}
+                onMouseEnter={e => e.currentTarget.style.color = t.textMuted}
+                onMouseLeave={e => e.currentTarget.style.color = t.textDim}
+              >
+                {copied === "sys" ? <Check size={11} /> : <Copy size={11} />}
+                {copied === "sys" ? "copied" : "copy"}
+              </button>
+            </div>
+            <textarea
+              value={systemVal}
+              onChange={e => setSystemVal(e.target.value)}
+              placeholder="You are a helpful assistant…"
+              rows={6}
+              style={{
+                width: "100%", background: t.inputBg, border: `1px solid ${t.border}`,
+                borderRadius: 7, padding: "9px 11px", fontSize: 11.5, color: t.text,
+                fontFamily: "inherit", outline: "none", resize: "vertical", lineHeight: 1.6,
+                transition: "border-color .15s"
+              }}
+              onFocus={e => e.target.style.borderColor = t.border2}
+              onBlur={e => e.target.style.borderColor = t.border}
+            />
+          </div>
+
+          <div style={{ height: 1, background: t.border, margin: "0 14px" }} />
+
+          {/* User prompt */}
+          <div style={{ padding: "12px 14px 10px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
+              <span style={{ fontSize: 10, color: t.textMuted, letterSpacing: ".08em" }}>USER PROMPT</span>
+              <button
+                onClick={() => copyToClipboard(userVal, "usr")}
+                style={{ background: "none", border: "none", cursor: "pointer", color: t.textDim, display: "flex", gap: 4, alignItems: "center", fontSize: 10, padding: "2px 6px", borderRadius: 4, fontFamily: "inherit" }}
+                onMouseEnter={e => e.currentTarget.style.color = t.textMuted}
+                onMouseLeave={e => e.currentTarget.style.color = t.textDim}
+              >
+                {copied === "usr" ? <Check size={11} /> : <Copy size={11} />}
+                {copied === "usr" ? "copied" : "copy"}
+              </button>
+            </div>
+            <textarea
+              value={userVal}
+              onChange={e => setUserVal(e.target.value)}
+              placeholder="Based on the context, please…"
+              rows={8}
+              style={{
+                width: "100%", background: t.inputBg, border: `1px solid ${t.border}`,
+                borderRadius: 7, padding: "9px 11px", fontSize: 11.5, color: t.text,
+                fontFamily: "inherit", outline: "none", resize: "vertical", lineHeight: 1.6,
+                transition: "border-color .15s"
+              }}
+              onFocus={e => e.target.style.borderColor = t.border2}
+              onBlur={e => e.target.style.borderColor = t.border}
+            />
+          </div>
+
+          {/* Save to library */}
+          <div style={{ padding: "8px 14px 12px" }}>
+            <div style={{ display: "flex", gap: 6 }}>
+              <input
+                value={saveNameInput}
+                onChange={e => setSaveNameInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleSaveToLibrary()}
+                placeholder="Name to save to library…"
+                style={{
+                  flex: 1, background: t.inputBg, border: `1px solid ${t.border}`,
+                  borderRadius: 6, padding: "5px 9px", fontSize: 11, color: t.text,
+                  fontFamily: "inherit", outline: "none"
+                }}
+              />
+              <button
+                onClick={handleSaveToLibrary}
+                disabled={!saveNameInput.trim()}
+                style={{
+                  display: "flex", alignItems: "center", gap: 5, padding: "5px 10px",
+                  borderRadius: 6, fontSize: 11, cursor: saveNameInput.trim() ? "pointer" : "default",
+                  background: saveNameInput.trim() ? t.savedTag : t.surface2,
+                  color: saveNameInput.trim() ? t.savedText : t.textDim,
+                  border: `1px solid ${saveNameInput.trim() ? t.savedBorder : t.border}`,
+                  fontFamily: "inherit", transition: "all .15s"
+                }}
+              >
+                <Bookmark size={11} />Save
+              </button>
+            </div>
+          </div>
+
+          {/* Apply button */}
+          <div style={{ padding: "0 14px 14px", marginTop: "auto" }}>
+            <button
+              onClick={handleSave}
+              style={{
+                width: "100%", padding: "9px 0", borderRadius: 7, fontSize: 12, fontWeight: 600,
+                background: t.text, color: t.bg, border: "none", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                fontFamily: "inherit", transition: "opacity .15s"
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = ".85"}
+              onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+            >
+              <CornerDownLeft size={13} />Apply to Node
+            </button>
+          </div>
+        </div>
+      )}
+
+      {tab === "library" && (
+        <div style={{ flex: 1, overflowY: "auto", padding: "10px" }}>
+          {savedPrompts.length === 0 ? (
+            <div style={{ textAlign: "center", marginTop: 40, color: t.textDim }}>
+              <BookMarked size={24} style={{ margin: "0 auto 10px", display: "block", opacity: .4 }} />
+              <p style={{ fontSize: 12 }}>No saved prompts yet.</p>
+              <p style={{ fontSize: 11, marginTop: 4 }}>Save prompts from the Edit tab.</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {savedPrompts.map((sp) => (
+                <div key={sp.id} style={{
+                  background: t.surface, border: `1px solid ${t.border}`, borderRadius: 8,
+                  overflow: "hidden"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderBottom: `1px solid ${t.border}` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <Bookmark size={11} color={t.savedText} />
+                      <span style={{ fontSize: 12, fontWeight: 500, color: t.text }}>{sp.name}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button
+                        onClick={() => onApplySaved(node.id, sp)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 4, padding: "3px 8px",
+                          borderRadius: 5, fontSize: 10, cursor: "pointer", fontFamily: "inherit",
+                          background: t.savedTag, color: t.savedText,
+                          border: `1px solid ${t.savedBorder}`, transition: "all .15s"
+                        }}
+                      >
+                        <CornerDownLeft size={10} />Apply
+                      </button>
+                      <button
+                        onClick={() => onDeleteSaved(sp.id)}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: t.textDim, display: "flex", padding: 4, borderRadius: 4 }}
+                        onMouseEnter={e => e.currentTarget.style.color = t.text}
+                        onMouseLeave={e => e.currentTarget.style.color = t.textDim}
+                      >
+                        <Trash2 size={10} />
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+                    {sp.system && (
+                      <div>
+                        <span style={{ fontSize: 9, color: t.textDim, letterSpacing: ".08em", display: "block", marginBottom: 3 }}>SYSTEM</span>
+                        <p style={{ fontSize: 10.5, color: t.textMuted, lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                          {sp.system}
+                        </p>
+                      </div>
+                    )}
+                    {sp.user && (
+                      <div>
+                        <span style={{ fontSize: 9, color: t.textDim, letterSpacing: ".08em", display: "block", marginBottom: 3 }}>USER</span>
+                        <p style={{ fontSize: 10.5, color: t.textMuted, lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                          {sp.user}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── FLOW NODE ────────────────────────────────────────────────────────────────
 function FlowNode({
   node, selected, onDelete, onFieldChange, onMouseDown,
-  onStartConnect,   // (nodeId, e) — user starts dragging from right handle
-  onCompleteConnect,// (nodeId)    — user releases on left handle
-  connectingFrom,   // string|null — id of node being connected from
+  onStartConnect, onCompleteConnect, connectingFrom,
+  onOpenEditor,
   theme: t
 }) {
   const meta = NODE_META[node.type] || NODE_META.output;
   const NodeIcon = meta.Icon;
-
   const isTarget = connectingFrom && connectingFrom !== node.id;
+  const isLLM = node.type === "llm";
+
+  // Check if this node has saved/filled prompts
+  const hasPrompt = node.fields?.some(f => f.type === "textarea" && f.value?.trim().length > 0);
 
   return (
     <div
@@ -140,15 +434,39 @@ function FlowNode({
           <span style={{ fontSize: 11, fontWeight: 500, color: t.text, letterSpacing: "-.01em" }}>
             {node.label || meta.label}
           </span>
+          {isLLM && hasPrompt && (
+            <span style={{
+              fontSize: 9, padding: "1px 5px", borderRadius: 3,
+              background: t.savedTag, color: t.savedText,
+              border: `1px solid ${t.savedBorder}`
+            }}>saved</span>
+          )}
         </div>
-        <button
-          onMouseDown={e => { e.stopPropagation(); onDelete(node.id); }}
-          style={{ background: "none", border: "none", cursor: "pointer", color: t.textDim, padding: 2, display: "flex", borderRadius: 4 }}
-          onMouseEnter={e => e.currentTarget.style.color = t.text}
-          onMouseLeave={e => e.currentTarget.style.color = t.textDim}
-        >
-          <X size={11} />
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+          {isLLM && (
+            <button
+              onMouseDown={e => e.stopPropagation()}
+              onClick={e => { e.stopPropagation(); onOpenEditor(node.id); }}
+              title="Open Prompt Editor"
+              style={{
+                background: "none", border: "none", cursor: "pointer", color: t.textDim,
+                padding: 2, display: "flex", borderRadius: 4, transition: "color .15s"
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = t.text}
+              onMouseLeave={e => e.currentTarget.style.color = t.textDim}
+            >
+              <Edit3 size={11} />
+            </button>
+          )}
+          <button
+            onMouseDown={e => { e.stopPropagation(); onDelete(node.id); }}
+            style={{ background: "none", border: "none", cursor: "pointer", color: t.textDim, padding: 2, display: "flex", borderRadius: 4 }}
+            onMouseEnter={e => e.currentTarget.style.color = t.text}
+            onMouseLeave={e => e.currentTarget.style.color = t.textDim}
+          >
+            <X size={11} />
+          </button>
+        </div>
       </div>
 
       {/* Fields */}
@@ -169,23 +487,41 @@ function FlowNode({
               />
             )}
             {f.type === "textarea" && (
-              <textarea
-                defaultValue={f.value}
-                placeholder={f.placeholder}
-                rows={3}
-                style={{
-                  width: "100%", background: t.inputBg, border: `1px solid ${t.border}`,
-                  borderRadius: 5, padding: "5px 8px", fontSize: 11, color: t.textMuted,
-                  fontFamily: "inherit", outline: "none", resize: "none", lineHeight: 1.5
-                }}
-                onMouseDown={e => e.stopPropagation()}
-                onChange={e => onFieldChange(node.id, i, e.target.value)}
-              />
+              <div style={{ position: "relative" }}>
+                <textarea
+                  value={f.value}
+                  placeholder={f.placeholder}
+                  rows={3}
+                  style={{
+                    width: "100%", background: t.inputBg, border: `1px solid ${t.border}`,
+                    borderRadius: 5, padding: "5px 8px", fontSize: 11, color: t.textMuted,
+                    fontFamily: "inherit", outline: "none", resize: "none", lineHeight: 1.5
+                  }}
+                  onMouseDown={e => e.stopPropagation()}
+                  onChange={e => onFieldChange(node.id, i, e.target.value)}
+                />
+                {/* Edit hint overlay when empty */}
+                {!f.value && (
+                  <div
+                    onMouseDown={e => e.stopPropagation()}
+                    onClick={e => { e.stopPropagation(); onOpenEditor(node.id); }}
+                    style={{
+                      position: "absolute", bottom: 6, right: 6,
+                      display: "flex", alignItems: "center", gap: 3,
+                      fontSize: 9, color: t.textDim, cursor: "pointer",
+                      padding: "2px 5px", borderRadius: 3, background: t.surface2,
+                      border: `1px solid ${t.border}`
+                    }}
+                  >
+                    <Edit3 size={8} />edit
+                  </div>
+                )}
+              </div>
             )}
             {f.type === "select" && (
               <div style={{ position: "relative" }}>
                 <select
-                  defaultValue={f.value}
+                  value={f.value}
                   style={{
                     width: "100%", background: t.inputBg, border: `1px solid ${t.border}`,
                     borderRadius: 5, padding: "4px 24px 4px 8px", fontSize: 11, color: t.text,
@@ -206,7 +542,7 @@ function FlowNode({
                   <span style={{ fontSize: 10, color: t.text }}>{f.value}</span>
                 </div>
                 <input
-                  type="range" min={f.min} max={f.max} step={f.step} defaultValue={f.value}
+                  type="range" min={f.min} max={f.max} step={f.step} value={f.value}
                   style={{ width: "100%", accentColor: t.accent }}
                   onMouseDown={e => e.stopPropagation()}
                   onChange={e => onFieldChange(node.id, i, parseFloat(e.target.value))}
@@ -228,7 +564,7 @@ function FlowNode({
         ))}
       </div>
 
-      {/* LEFT handle — drop target */}
+      {/* LEFT handle */}
       <div
         onMouseUp={e => {
           e.stopPropagation();
@@ -240,33 +576,23 @@ function FlowNode({
           background: isTarget ? t.text : t.handle,
           border: `2px solid ${t.bg}`,
           cursor: isTarget ? "crosshair" : "default",
-          zIndex: 10,
-          transition: "background .15s, transform .15s",
+          zIndex: 10, transition: "background .15s, transform .15s",
           ...(isTarget ? { transform: "translateY(-50%) scale(1.4)" } : {}),
         }}
       />
 
-      {/* RIGHT handle — drag source */}
+      {/* RIGHT handle */}
       <div
-        onMouseDown={e => {
-          e.stopPropagation();
-          onStartConnect(node.id, e);
-        }}
+        onMouseDown={e => { e.stopPropagation(); onStartConnect(node.id, e); }}
         style={{
           position: "absolute", right: -6, top: "50%", transform: "translateY(-50%)",
           width: 12, height: 12, borderRadius: "50%",
           background: connectingFrom === node.id ? t.text : t.handle,
           border: `2px solid ${t.bg}`,
-          cursor: "crosshair",
-          zIndex: 10,
-          transition: "background .15s, transform .15s",
+          cursor: "crosshair", zIndex: 10, transition: "background .15s, transform .15s",
         }}
-        onMouseEnter={e => {
-          if (!connectingFrom) e.currentTarget.style.transform = "translateY(-50%) scale(1.4)";
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.transform = "translateY(-50%)";
-        }}
+        onMouseEnter={e => { if (!connectingFrom) e.currentTarget.style.transform = "translateY(-50%) scale(1.4)"; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = "translateY(-50%)"; }}
       />
     </div>
   );
@@ -306,20 +632,6 @@ const INITIAL_EDGES = [
   { id: "e2", from: "2", to: "3" },
 ];
 
-// Returns the right-handle position of a node (canvas coords, before pan)
-function getRightHandle(node, nodeRefs) {
-  const el = nodeRefs.current[node.id];
-  const h = el ? el.offsetHeight : 80;
-  return { x: node.x + NODE_WIDTH, y: node.y + h / 2 };
-}
-
-// Returns the left-handle position of a node
-function getLeftHandle(node, nodeRefs) {
-  const el = nodeRefs.current[node.id];
-  const h = el ? el.offsetHeight : 80;
-  return { x: node.x, y: node.y + h / 2 };
-}
-
 function FlowCanvas({ theme: t }) {
   const [nodes, setNodes] = useState(INITIAL_NODES);
   const [edges, setEdges] = useState(INITIAL_EDGES);
@@ -328,18 +640,30 @@ function FlowCanvas({ theme: t }) {
   const [runLog, setRunLog] = useState([]);
   const [showLog, setShowLog] = useState(false);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [editorNodeId, setEditorNodeId] = useState(null); // which node's editor is open
+  const [savedPrompts, setSavedPrompts] = useState([
+    {
+      id: "sp1", name: "README Generator",
+      system: "You are a technical documentation expert.",
+      user: "Based on the repo context, generate a comprehensive README.md with Overview, Features, Installation, Usage sections."
+    },
+    {
+      id: "sp2", name: "Code Reviewer",
+      system: "You are a senior software engineer who reviews code for quality, security, and performance.",
+      user: "Review the provided code and give specific, actionable feedback on improvements."
+    },
+  ]);
 
-  // Connection state
-  const [connectingFrom, setConnectingFrom] = useState(null); // nodeId
-  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });    // current mouse in canvas coords
+  const [connectingFrom, setConnectingFrom] = useState(null);
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
 
   const dragging = useRef(null);
   const panning = useRef(null);
   const canvasRef = useRef();
-  const nodeRefs = useRef({}); // map nodeId → DOM element
+  const nodeRefs = useRef({});
   const edgeIdCounter = useRef(10);
+  const savedPromptCounter = useRef(10);
 
-  // ── Drag nodes ──
   const onNodeMouseDown = useCallback((nodeId, e) => {
     e.stopPropagation();
     const node = nodes.find(n => n.id === nodeId);
@@ -347,7 +671,6 @@ function FlowCanvas({ theme: t }) {
     dragging.current = { nodeId, startX: e.clientX - node.x, startY: e.clientY - node.y };
   }, [nodes]);
 
-  // ── Pan canvas ──
   const onCanvasMouseDown = useCallback((e) => {
     const tag = e.target.tagName.toLowerCase();
     if (e.target === canvasRef.current || tag === "svg" || tag === "path" || tag === "rect" || tag === "circle") {
@@ -356,7 +679,6 @@ function FlowCanvas({ theme: t }) {
     }
   }, [pan]);
 
-  // ── Start connecting from right handle ──
   const onStartConnect = useCallback((nodeId, e) => {
     e.stopPropagation();
     const rect = canvasRef.current.getBoundingClientRect();
@@ -364,13 +686,8 @@ function FlowCanvas({ theme: t }) {
     setDragPos({ x: e.clientX - rect.left - pan.x, y: e.clientY - rect.top - pan.y });
   }, [pan]);
 
-  // ── Complete connection on left handle ──
   const onCompleteConnect = useCallback((targetNodeId) => {
-    if (!connectingFrom || connectingFrom === targetNodeId) {
-      setConnectingFrom(null);
-      return;
-    }
-    // Avoid duplicate edges
+    if (!connectingFrom || connectingFrom === targetNodeId) { setConnectingFrom(null); return; }
     setEdges(es => {
       const exists = es.some(e => e.from === connectingFrom && e.to === targetNodeId);
       if (exists) return es;
@@ -386,14 +703,13 @@ function FlowCanvas({ theme: t }) {
     } else if (panning.current) {
       setPan({ x: e.clientX - panning.current.startX, y: e.clientY - panning.current.startY });
     }
-
     if (connectingFrom) {
       const rect = canvasRef.current.getBoundingClientRect();
       setDragPos({ x: e.clientX - rect.left - pan.x, y: e.clientY - rect.top - pan.y });
     }
   }, [connectingFrom, pan]);
 
-  const onMouseUp = useCallback((e) => {
+  const onMouseUp = useCallback(() => {
     dragging.current = null;
     panning.current = null;
     if (connectingFrom) setConnectingFrom(null);
@@ -403,7 +719,8 @@ function FlowCanvas({ theme: t }) {
     setNodes(ns => ns.filter(n => n.id !== id));
     setEdges(es => es.filter(e => e.from !== id && e.to !== id));
     if (selected === id) setSelected(null);
-  }, [selected]);
+    if (editorNodeId === id) setEditorNodeId(null);
+  }, [selected, editorNodeId]);
 
   const deleteEdge = useCallback((edgeId) => {
     setEdges(es => es.filter(e => e.id !== edgeId));
@@ -419,7 +736,12 @@ function FlowCanvas({ theme: t }) {
     const id = String(++nodeIdCounter);
     const defaults = {
       github: [{ type: "text", placeholder: "Enter GitHub URL", value: "" }, { type: "tags", value: ["README"] }],
-      llm: [{ type: "select", value: "claude-sonnet-4", options: ["claude-sonnet-4", "claude-opus-4", "gpt-4o"] }, { type: "textarea", placeholder: "System prompt…", value: "" }, { type: "slider", label: "Temp:", min: 0, max: 1, step: 0.1, value: 0.7 }],
+      llm: [
+        { type: "select", value: "claude-sonnet-4", options: ["claude-sonnet-4", "claude-opus-4", "gpt-4o"] },
+        { type: "textarea", placeholder: "System prompt…", value: "" },
+        { type: "textarea", placeholder: "User prompt…", value: "" },
+        { type: "slider", label: "Temp:", min: 0, max: 1, step: 0.1, value: 0.7 }
+      ],
       rag: [{ type: "select", value: "cosine", options: ["cosine", "dot_product", "euclidean"] }, { type: "slider", label: "Top-K:", min: 1, max: 20, step: 1, value: 5 }],
       output: [{ type: "select", value: "Markdown", options: ["README.md", "JSON", "Markdown", "HTML"] }],
       web: [{ type: "text", placeholder: "Enter URL…", value: "" }],
@@ -430,6 +752,46 @@ function FlowCanvas({ theme: t }) {
       x: 80 + Math.random() * 300, y: 100 + Math.random() * 200,
       fields: defaults[type] || []
     }]);
+    // Auto-open editor for new LLM nodes
+    if (type === "llm") setTimeout(() => setEditorNodeId(id), 50);
+  }, []);
+
+  // Save prompt from editor back to node
+  const handleEditorSave = useCallback((nodeId, systemVal, userVal, saveName) => {
+    setNodes(ns => ns.map(n => {
+      if (n.id !== nodeId) return n;
+      const newFields = n.fields.map(f => {
+        if (f.type === "textarea" && f.placeholder?.includes("System")) return { ...f, value: systemVal };
+        if (f.type === "textarea" && f.placeholder?.includes("User")) return { ...f, value: userVal };
+        return f;
+      });
+      return { ...n, fields: newFields };
+    }));
+    if (saveName) {
+      setSavedPrompts(sp => [...sp, {
+        id: `sp${++savedPromptCounter.current}`,
+        name: saveName,
+        system: systemVal,
+        user: userVal
+      }]);
+    }
+  }, []);
+
+  // Apply a saved prompt to a node
+  const handleApplySaved = useCallback((nodeId, savedPrompt) => {
+    setNodes(ns => ns.map(n => {
+      if (n.id !== nodeId) return n;
+      const newFields = n.fields.map(f => {
+        if (f.type === "textarea" && f.placeholder?.includes("System")) return { ...f, value: savedPrompt.system || f.value };
+        if (f.type === "textarea" && f.placeholder?.includes("User")) return { ...f, value: savedPrompt.user || f.value };
+        return f;
+      });
+      return { ...n, fields: newFields };
+    }));
+  }, []);
+
+  const handleDeleteSaved = useCallback((id) => {
+    setSavedPrompts(sp => sp.filter(p => p.id !== id));
   }, []);
 
   const runPipeline = useCallback(async () => {
@@ -443,47 +805,22 @@ function FlowCanvas({ theme: t }) {
     setRunning(false);
   }, [nodes]);
 
-  // ── Build committed edge paths ──
+  const editorNode = editorNodeId ? nodes.find(n => n.id === editorNodeId) : null;
+
   const edgePaths = edges.map(e => {
     const fromNode = nodes.find(n => n.id === e.from);
     const toNode = nodes.find(n => n.id === e.to);
     if (!fromNode || !toNode) return null;
-
     const from = getRightHandle(fromNode, nodeRefs);
-    const to   = getLeftHandle(toNode, nodeRefs);
-
+    const to = getLeftHandle(toNode, nodeRefs);
     const d = makePath(from.x, from.y, to.x, to.y);
-
-    // Midpoint for delete button
     const mx = (from.x + to.x) / 2;
     const my = (from.y + to.y) / 2;
-
     return (
       <g key={e.id}>
-        {/* Invisible fat hitbox for easier clicking */}
-        <path
-          d={d}
-          fill="none"
-          stroke="transparent"
-          strokeWidth="12"
-          style={{ cursor: "pointer" }}
-          onClick={() => deleteEdge(e.id)}
-        />
-        <path
-          d={d}
-          fill="none"
-          stroke={t.edgeColor}
-          strokeWidth="1.5"
-          strokeDasharray="5 4"
-          markerEnd="url(#arrowhead)"
-          style={{ animation: "edgeDash 1.2s linear infinite", pointerEvents: "none" }}
-        />
-        {/* Delete button at midpoint */}
-        <g
-          transform={`translate(${mx}, ${my})`}
-          style={{ cursor: "pointer" }}
-          onClick={() => deleteEdge(e.id)}
-        >
+        <path d={d} fill="none" stroke="transparent" strokeWidth="12" style={{ cursor: "pointer" }} onClick={() => deleteEdge(e.id)} />
+        <path d={d} fill="none" stroke={t.edgeColor} strokeWidth="1.5" strokeDasharray="5 4" markerEnd="url(#arrowhead)" style={{ animation: "edgeDash 1.2s linear infinite", pointerEvents: "none" }} />
+        <g transform={`translate(${mx}, ${my})`} style={{ cursor: "pointer" }} onClick={() => deleteEdge(e.id)}>
           <circle r="8" fill={t.surface} stroke={t.border2} strokeWidth="1" />
           <line x1="-3.5" y1="-3.5" x2="3.5" y2="3.5" stroke={t.textMuted} strokeWidth="1.5" strokeLinecap="round" />
           <line x1="3.5" y1="-3.5" x2="-3.5" y2="3.5" stroke={t.textMuted} strokeWidth="1.5" strokeLinecap="round" />
@@ -492,24 +829,13 @@ function FlowCanvas({ theme: t }) {
     );
   });
 
-  // ── Pending / in-progress connection path ──
   let pendingPath = null;
   if (connectingFrom) {
     const fromNode = nodes.find(n => n.id === connectingFrom);
     if (fromNode) {
       const from = getRightHandle(fromNode, nodeRefs);
       const d = makePath(from.x, from.y, dragPos.x, dragPos.y);
-      pendingPath = (
-        <path
-          d={d}
-          fill="none"
-          stroke={t.text}
-          strokeWidth="1.5"
-          strokeDasharray="6 4"
-          opacity="0.6"
-          style={{ pointerEvents: "none" }}
-        />
-      );
+      pendingPath = <path d={d} fill="none" stroke={t.text} strokeWidth="1.5" strokeDasharray="6 4" opacity="0.6" style={{ pointerEvents: "none" }} />;
     }
   }
 
@@ -536,95 +862,116 @@ function FlowCanvas({ theme: t }) {
           );
         })}
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 10, color: t.textDim, fontFamily: "monospace" }}>
-          drag right handle → drop on left handle to connect · click edge × to remove
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 10, color: t.textDim, fontFamily: "monospace" }}>
+            click <Edit3 size={9} style={{ display: "inline", verticalAlign: "middle" }} /> on LLM nodes to edit prompts
+          </span>
+          {savedPrompts.length > 0 && (
+            <span style={{
+              fontSize: 10, padding: "2px 7px", borderRadius: 4,
+              background: t.savedTag, color: t.savedText,
+              border: `1px solid ${t.savedBorder}`,
+              display: "flex", alignItems: "center", gap: 4
+            }}>
+              <Bookmark size={9} />{savedPrompts.length} saved
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Canvas */}
-      <div
-        ref={canvasRef}
-        style={{
-          flex: 1, position: "relative", overflow: "hidden",
-          cursor: connectingFrom ? "crosshair" : "default"
-        }}
-        onMouseDown={onCanvasMouseDown}
-        onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp}
-        onMouseLeave={onMouseUp}
-      >
-        {/* SVG layer: grid + edges */}
-        <svg
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible" }}
+      {/* Canvas + Editor overlay */}
+      <div style={{ flex: 1, position: "relative", display: "flex", overflow: "hidden" }}>
+        {/* Canvas */}
+        <div
+          ref={canvasRef}
+          style={{
+            flex: 1, position: "relative", overflow: "hidden",
+            cursor: connectingFrom ? "crosshair" : "default"
+          }}
+          onMouseDown={onCanvasMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+          onMouseLeave={onMouseUp}
         >
-          <defs>
-            <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse" x={pan.x % 24} y={pan.y % 24}>
-              <circle cx="12" cy="12" r="0.8" fill={t.gridDot} />
-            </pattern>
-            <marker id="arrowhead" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-              <path d="M0,0.5 L0,6.5 L6,3.5 z" fill={t.edgeColor} />
-            </marker>
-          </defs>
-          <style>{`@keyframes edgeDash { to { stroke-dashoffset: -36; } }`}</style>
-          <rect width="100%" height="100%" fill="url(#grid)" />
+          <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible" }}>
+            <defs>
+              <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse" x={pan.x % 24} y={pan.y % 24}>
+                <circle cx="12" cy="12" r="0.8" fill={t.gridDot} />
+              </pattern>
+              <marker id="arrowhead" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+                <path d="M0,0.5 L0,6.5 L6,3.5 z" fill={t.edgeColor} />
+              </marker>
+            </defs>
+            <style>{`@keyframes edgeDash { to { stroke-dashoffset: -36; } } @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+            <g transform={`translate(${pan.x}, ${pan.y})`}>
+              {edgePaths}
+              {pendingPath}
+            </g>
+          </svg>
 
-          {/* Edges are drawn in canvas-space (pan applied via node positions) */}
-          <g transform={`translate(${pan.x}, ${pan.y})`}>
-            {edgePaths}
-            {pendingPath}
-          </g>
-        </svg>
+          <div style={{ position: "absolute", inset: 0 }}>
+            {nodes.map(n => (
+              <div
+                key={n.id}
+                ref={el => { if (el) nodeRefs.current[n.id] = el; }}
+                style={{ position: "absolute", left: n.x + pan.x, top: n.y + pan.y }}
+              >
+                <FlowNode
+                  node={n}
+                  selected={selected === n.id}
+                  onDelete={onDelete}
+                  onFieldChange={onFieldChange}
+                  onMouseDown={e => onNodeMouseDown(n.id, e)}
+                  onStartConnect={onStartConnect}
+                  onCompleteConnect={onCompleteConnect}
+                  connectingFrom={connectingFrom}
+                  onOpenEditor={setEditorNodeId}
+                  theme={t}
+                />
+              </div>
+            ))}
+          </div>
 
-        {/* Nodes layer */}
-        <div style={{ position: "absolute", inset: 0 }}>
-          {nodes.map(n => (
-            <div
-              key={n.id}
-              ref={el => { if (el) nodeRefs.current[n.id] = el; }}
-              style={{ position: "absolute", left: n.x + pan.x, top: n.y + pan.y }}
-            >
-              <FlowNode
-                node={n}
-                selected={selected === n.id}
-                onDelete={onDelete}
-                onFieldChange={onFieldChange}
-                onMouseDown={e => onNodeMouseDown(n.id, e)}
-                onStartConnect={onStartConnect}
-                onCompleteConnect={onCompleteConnect}
-                connectingFrom={connectingFrom}
-                theme={t}
-              />
+          {showLog && (
+            <div style={{
+              position: "absolute", bottom: 16, right: editorNode ? 416 : 16, width: 260,
+              background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10,
+              overflow: "hidden", boxShadow: t.shadow, transition: "right .2s ease"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderBottom: `1px solid ${t.border}` }}>
+                <span style={{ fontSize: 10, color: t.textMuted, fontFamily: "monospace", letterSpacing: ".08em" }}>RUN LOG</span>
+                <button onClick={() => setShowLog(false)} style={{ background: "none", border: "none", cursor: "pointer", color: t.textMuted, display: "flex" }}>
+                  <X size={11} />
+                </button>
+              </div>
+              <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 4, maxHeight: 140, overflowY: "auto" }}>
+                {runLog.map((l, i) => (
+                  <span key={i} style={{ fontFamily: "monospace", fontSize: 11, color: l.dim ? t.textMuted : t.text }}>{l.text}</span>
+                ))}
+                {running && (
+                  <div style={{ display: "flex", gap: 4, marginTop: 2 }}>
+                    {[0, 1, 2].map(i => (
+                      <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: t.textMuted, animation: `dot 1.4s ease infinite`, animationDelay: `${i * 0.2}s` }} />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          ))}
+          )}
         </div>
 
-        {/* Run log */}
-        {showLog && (
-          <div style={{
-            position: "absolute", bottom: 16, right: 16, width: 260,
-            background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10,
-            overflow: "hidden", boxShadow: t.shadow,
-            animation: "fadeIn .2s ease forwards"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderBottom: `1px solid ${t.border}` }}>
-              <span style={{ fontSize: 10, color: t.textMuted, fontFamily: "monospace", letterSpacing: ".08em" }}>RUN LOG</span>
-              <button onClick={() => setShowLog(false)} style={{ background: "none", border: "none", cursor: "pointer", color: t.textMuted, display: "flex" }}>
-                <X size={11} />
-              </button>
-            </div>
-            <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 4, maxHeight: 140, overflowY: "auto" }}>
-              {runLog.map((l, i) => (
-                <span key={i} style={{ fontFamily: "monospace", fontSize: 11, color: l.dim ? t.textMuted : t.text }}>{l.text}</span>
-              ))}
-              {running && (
-                <div style={{ display: "flex", gap: 4, marginTop: 2 }}>
-                  {[0, 1, 2].map(i => (
-                    <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: t.textMuted, animation: `dot 1.4s ease infinite`, animationDelay: `${i * 0.2}s` }} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+        {/* Prompt Editor Panel */}
+        {editorNode && (
+          <PromptEditorPanel
+            node={editorNode}
+            savedPrompts={savedPrompts}
+            onSave={handleEditorSave}
+            onClose={() => setEditorNodeId(null)}
+            onApplySaved={handleApplySaved}
+            onDeleteSaved={handleDeleteSaved}
+            theme={t}
+          />
         )}
       </div>
     </div>
@@ -684,11 +1031,9 @@ function RAGAssistant({ theme: t }) {
     setInput("");
     setMessages(m => [...m, { role: "user", content: q }]);
     setLoading(true);
-
     const qEmbed = naiveEmbed(q);
     const steps = ["Embedding query…", "Searching vector store…"];
     let context = "";
-
     if (vectorStore.length > 0) {
       const top = vectorStore.map(item => ({ ...item, score: cosineSim(qEmbed, item.embedding) }))
         .sort((a, b) => b.score - a.score).slice(0, 6);
@@ -699,11 +1044,9 @@ function RAGAssistant({ theme: t }) {
     }
     steps.push("Generating answer…");
     setPipeline(steps);
-
     const systemPrompt = vectorStore.length > 0
       ? `You are a research assistant. Answer ONLY using the provided context. Cite paper names. Be precise.\n\nCONTEXT:\n${context}`
       : "You are a helpful research assistant. No documents uploaded yet. Answer generally.";
-
     try {
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -730,7 +1073,6 @@ function RAGAssistant({ theme: t }) {
 
   return (
     <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-      {/* Sidebar */}
       <aside style={{ width: 264, flexShrink: 0, display: "flex", flexDirection: "column", background: t.surface, borderRight: `1px solid ${t.border}` }}>
         <div style={{ padding: "14px 14px 10px", borderBottom: `1px solid ${t.border}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
@@ -739,8 +1081,6 @@ function RAGAssistant({ theme: t }) {
           </div>
           <p style={{ fontSize: 11, color: t.textMuted }}>Upload PDFs to ground AI answers</p>
         </div>
-
-        {/* Drop zone */}
         <div
           style={{
             margin: "10px 10px 6px", borderRadius: 8,
@@ -763,8 +1103,6 @@ function RAGAssistant({ theme: t }) {
           </p>
           <p style={{ fontSize: 10, color: t.textDim, marginTop: 2 }}>PDF · TXT · MD</p>
         </div>
-
-        {/* Papers list */}
         <div style={{ flex: 1, overflowY: "auto", padding: "0 10px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
           {papers.length === 0
             ? <p style={{ fontSize: 11, color: t.textDim, textAlign: "center", marginTop: 20 }}>No papers yet</p>
@@ -784,7 +1122,6 @@ function RAGAssistant({ theme: t }) {
             ))
           }
         </div>
-
         {vectorStore.length > 0 && (
           <div style={{ margin: "0 10px 10px", padding: "7px 10px", borderRadius: 7, background: t.surface2, border: `1px solid ${t.border}` }}>
             <p style={{ fontSize: 11, color: t.textMuted }}>
@@ -794,9 +1131,7 @@ function RAGAssistant({ theme: t }) {
         )}
       </aside>
 
-      {/* Chat */}
       <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: t.bg }}>
-        {/* Preset pills */}
         <div style={{ display: "flex", gap: 6, padding: "8px 14px", borderBottom: `1px solid ${t.border}`, flexWrap: "wrap", background: t.surface }}>
           {PRESETS.map(({ Icon: PI, label, prompt }) => (
             <button key={label} onClick={() => query(prompt)}
@@ -812,16 +1147,11 @@ function RAGAssistant({ theme: t }) {
             </button>
           ))}
         </div>
-
-        {/* Messages */}
         <div ref={chatRef} style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
           {messages.map((m, i) => (
             <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", gap: 8, alignItems: "flex-start", animation: "fadeIn .2s ease forwards" }}>
               {m.role === "assistant" && (
-                <div style={{
-                  width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                  background: t.surface2, border: `1px solid ${t.border}`, flexShrink: 0, marginTop: 2
-                }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: t.surface2, border: `1px solid ${t.border}`, flexShrink: 0, marginTop: 2 }}>
                   <Brain size={13} color={t.textMuted} strokeWidth={1.8} />
                 </div>
               )}
@@ -836,7 +1166,6 @@ function RAGAssistant({ theme: t }) {
               </div>
             </div>
           ))}
-
           {loading && (
             <div style={{ display: "flex", gap: 8, alignItems: "flex-start", animation: "fadeIn .2s ease forwards" }}>
               <div style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: t.surface2, border: `1px solid ${t.border}`, flexShrink: 0, marginTop: 2 }}>
@@ -863,8 +1192,6 @@ function RAGAssistant({ theme: t }) {
             </div>
           )}
         </div>
-
-        {/* Input */}
         <div style={{ padding: "12px 16px", borderTop: `1px solid ${t.border}`, background: t.surface }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, background: t.inputBg, border: `1px solid ${t.border}`, borderRadius: 12, padding: "8px 10px 8px 14px" }}>
             <input
@@ -913,6 +1240,7 @@ export default function App() {
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes dot { 0%,100% { opacity: .25; } 50% { opacity: 1; } }
+    @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     ::-webkit-scrollbar { width: 3px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: ${t.border2}; border-radius: 2px; }
@@ -925,22 +1253,19 @@ export default function App() {
     <>
       <style>{css}</style>
       <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: t.bg }}>
-        {/* Topbar */}
         <header style={{
           display: "flex", alignItems: "center", height: 46, padding: "0 14px", gap: 10,
           borderBottom: `1px solid ${t.border}`, background: t.surface, flexShrink: 0
         }}>
-          {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginRight: 4 }}>
-            <div style={{ width: 20, height: 20, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center"}}>
-              <img src={dark ? cubedark : cube} alt="Cube" />
+            <div style={{ width: 20, height: 20, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", background: t.surface2, border: `1px solid ${t.border}` }}>
+              <Zap size={12} color={t.textMuted} />
             </div>
             <span style={{ fontWeight: 700, fontSize: 14, color: t.text, letterSpacing: "-.03em", fontFamily: "'DM Sans', sans-serif" }}>FrameWork</span>
           </div>
 
           <div style={{ width: 1, height: 20, background: t.border, marginRight: 2 }} />
 
-          {/* Tabs */}
           {[
             { id: "rag", Icon: Brain, label: "RAG Research" },
             { id: "flow", Icon: Workflow, label: "Flow Builder" },
@@ -981,7 +1306,6 @@ export default function App() {
 
           <div style={{ flex: 1 }} />
 
-          {/* Theme toggle */}
           <button
             onClick={() => setDark(d => !d)}
             style={{
@@ -1022,7 +1346,6 @@ export default function App() {
           )}
         </header>
 
-        {/* Page content */}
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
           {page === "rag" && <RAGAssistant theme={t} />}
           {page === "flow" && <FlowCanvas theme={t} />}
