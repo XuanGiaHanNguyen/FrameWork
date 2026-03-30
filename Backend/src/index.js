@@ -23,7 +23,7 @@ import { randomUUID } from "crypto";
 import { readFileSync } from "fs";
 
 // ── LangChain imports ────────────────────────────────────────────────────────
-import { ChatAnthropic } from "@langchain/anthropic";
+import { ChatOllama } from "@langchain/community/chat_models/ollama";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { Document } from "@langchain/core/documents";
@@ -33,15 +33,10 @@ import { RunnableSequence, RunnablePassthrough } from "@langchain/core/runnables
 import { HuggingFaceTransformersEmbeddings } from "@langchain/community/embeddings/hf_transformers";
 
 // ── PDF parser ───────────────────────────────────────────────────────────────
-import pdfParse from "pdf-parse/lib/pdf-parse.js";
+import pdfParse from "pdf-parse-debugging-disabled";
 
 // ── Config ───────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
-
-if (!ANTHROPIC_API_KEY) {
-  console.warn("⚠  ANTHROPIC_API_KEY not set — LLM calls will fail. Set it in .env");
-}
 
 // ── Embeddings (free, local) ─────────────────────────────────────────────────
 // Uses Xenova/all-MiniLM-L6-v2 via @xenova/transformers — no API key needed.
@@ -58,11 +53,10 @@ try {
 }
 
 // ── LLM ─────────────────────────────────────────────────────────────────────
-const llm = new ChatAnthropic({
-  apiKey: ANTHROPIC_API_KEY,
-  model: "claude-haiku-4-5",   // cheap + fast; swap to claude-sonnet-4-5 for higher quality
-  maxTokens: 1500,
-  streaming: true,
+const llm = new ChatOllama({
+  baseUrl: "http://localhost:11434",
+  model: "llama3",
+  temperature: 0.7,
 });
 
 // ── In-memory state ──────────────────────────────────────────────────────────
@@ -79,7 +73,12 @@ const splitter = new RecursiveCharacterTextSplitter({
 
 // ── Express setup ────────────────────────────────────────────────────────────
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+app.options(/.*/,cors());
 app.use(express.json({ limit: "10mb" }));
 
 const upload = multer({
@@ -293,12 +292,10 @@ app.post("/api/flow/run", async (req, res) => {
           ? `${userField.value}\n\n${upstream ? `Context:\n${upstream}` : ""}`
           : upstream || "Hello";
 
-        const nodeLlm = new ChatAnthropic({
-          apiKey: ANTHROPIC_API_KEY,
-          model: modelField?.value?.includes("opus") ? "claude-opus-4-5" : "claude-haiku-4-5",
-          maxTokens: 1500,
+        const nodeLlm = new ChatOllama({
+          baseUrl: "http://localhost:11434",
+          model: "llama3",
           temperature: tempField?.value ?? 0.7,
-          streaming: true,
         });
 
         const nodePrompt = ChatPromptTemplate.fromMessages([
