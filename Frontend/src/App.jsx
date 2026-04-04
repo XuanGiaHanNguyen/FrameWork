@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Workflow, Zap, Save, Trash2, Sun, Moon } from "lucide-react";
 import { Brain } from "lucide-react";
 import { themes, buildGlobalCSS } from "./theme";
-import { API } from "./constant";
+import { checkHealth } from "./api";
 import { ServerBadge, SetupModal } from "./components/SharedUI";
 import { RAGAssistant } from "./components/RAGAssistant";
 import { FlowCanvasWrapper, FlowRunButton } from "./components/FlowCanvas";
@@ -22,8 +22,8 @@ export default function App() {
   useEffect(() => {
     const check = async () => {
       try {
-        const r = await fetch(`${API}/health`, { signal: AbortSignal.timeout(3000) });
-        setServerStatus(r.ok ? "ok" : "error");
+        const ok = await checkHealth();
+        setServerStatus(ok ? "ok" : "error");
       } catch {
         setServerStatus("error");
       }

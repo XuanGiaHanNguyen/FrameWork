@@ -1,11 +1,13 @@
 {
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "vite": "^8.0.3"
   },
   "scripts": {
-    "dev": "concurrently -n OLLAMA,BACKEND,FRONTEND -c magenta,blue,green \"npm run ollama\" \"npm run backend\" \"npm run frontend\"",
-    "ollama": "ollama serve",
+    "dev": "concurrently -n BACKEND,FRONTEND -c blue,green \"npm run backend\" \"npm run frontend\"",
     "backend": "cd backend && npm run dev",
-    "frontend": "cd frontend && npm run dev"
+    "frontend": "cd frontend && npm run dev",
+    "ollama:start": "ollama serve",
+    "ollama:stop": "pkill ollama || true"
   }
 }

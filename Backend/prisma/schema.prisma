@@ -1,0 +1,63 @@
+// ─── PRISMA SCHEMA ────────────────────────────────────────────────────────────
+// Run: npx prisma migrate dev --name init
+// Run: npx prisma generate
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Notebook (a "folder") ─────────────────────────────────────────────────────
+model Notebook {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  files    NotebookFile[]
+  messages ChatMessage[]
+
+  @@map("notebooks")
+}
+
+// ── File uploaded into a notebook ─────────────────────────────────────────────
+// s3Key is the full S3 object key, e.g. "notebooks/<notebookId>/<filename>"
+// chunks is how many vector chunks were created after ingestion
+model NotebookFile {
+  id         String   @id @default(uuid())
+  notebookId String
+  name       String           // original file name shown in UI
+  s3Key      String           // S3 object key for download / deletion
+  sizeBytes  Int
+  mimeType   String
+  chunks     Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  notebook Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+
+  @@unique([notebookId, name])   // no duplicate filenames inside the same notebook
+  @@map("notebook_files")
+}
+
+// ── Chat message in a notebook ────────────────────────────────────────────────
+model ChatMessage {
+  id         String   @id @default(uuid())
+  notebookId String
+  role       Role
+  content    String
+  sources    String[] // array of cited file names
+  createdAt  DateTime @default(now())
+
+  notebook Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+enum Role {
+  user
+  assistant
+}
