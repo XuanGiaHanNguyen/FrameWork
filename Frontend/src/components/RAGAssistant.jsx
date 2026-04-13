@@ -45,7 +45,7 @@ function NotebookCard({ notebook, onOpen, onDelete, onRename, theme: t }) {
         cursor: renaming ? "default" : "pointer",
         transition: "box-shadow .15s, border-color .15s",
         position: "relative",
-        boxShadow: hover ? "0 2px 8px rgba(0,0,0,0.12)" : "0 1px 3px rgba(0,0,0,0.06)",
+        boxShadow: hover ? "0 2px 2px rgba(0,0,0,0.12)" : "0 1px 3px rgba(0,0,0,0.06)",
       }}
     >
       {/* Icon + menu */}
@@ -53,9 +53,9 @@ function NotebookCard({ notebook, onOpen, onDelete, onRename, theme: t }) {
         <div style={{
           width: 40, height: 40, borderRadius: 12,
           display: "flex", alignItems: "center", justifyContent: "center",
-          background: "#E8F0FE", flexShrink: 0,
+          background: "#e9e9e9", flexShrink: 0,
         }}>
-          <FolderOpen size={18} color="#1A73E8" strokeWidth={1.6} />
+          <FolderOpen size={18} color="#585858" strokeWidth={1.6} />
         </div>
 
         <button
@@ -112,7 +112,7 @@ function NotebookCard({ notebook, onOpen, onDelete, onRename, theme: t }) {
             onBlur={submitRename}
             style={{
               width: "100%", background: t.surface2,
-              border: "1.5px solid #1A73E8", borderRadius: 8,
+              border: "1.5px solid #9b9b9b", borderRadius: 8,
               padding: "4px 8px", fontSize: 14, fontWeight: 600,
               color: t.text, fontFamily: "inherit", outline: "none",
             }}
@@ -146,15 +146,6 @@ function NotebookCard({ notebook, onOpen, onDelete, onRename, theme: t }) {
         <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: t.textDim }}>
           <Clock size={11} />{date}
         </span>
-      </div>
-
-      {/* Open hint */}
-      <div style={{
-        position: "absolute", right: 16, bottom: 16,
-        opacity: hover && !renaming ? 1 : 0, transition: "opacity .15s",
-        display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "#1A73E8", fontWeight: 500,
-      }}>
-        Open <ChevronRight size={11} />
       </div>
     </div>
   );
@@ -233,7 +224,7 @@ export function RAGAssistant({ theme: t, serverStatus, notebooks, setNotebooks }
       <div style={{ flex: 1, overflowY: "auto", padding: "32px 28px" }}>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 22 }}>
           <div>
-            <p style={{ fontSize: 18, fontWeight: 700, color: t.text, margin: 0 }}>Notebooks</p>
+            <p style={{ fontSize: 24, fontWeight: 700, color: t.text, margin: 0 }}>Notebooks</p>
             <p style={{ fontSize: 13, color: t.textMuted, margin: "6px 0 0" }}>Search or create a notebook for your research.</p>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
@@ -354,7 +345,7 @@ export function RAGAssistant({ theme: t, serverStatus, notebooks, setNotebooks }
                 alignItems: "center", justifyContent: "center",
                 gap: 10, minHeight: 160, transition: "all .15s", background: "transparent",
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "#1A73E8"; e.currentTarget.style.background = "#F8FBFF"; }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "#b1b1b1"; e.currentTarget.style.background = "#f9f9f9"; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = t.border2; e.currentTarget.style.background = "transparent"; }}
             >
               <div style={{
