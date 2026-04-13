@@ -1,34 +1,32 @@
- // src/components/NotebookView.jsx
+// src/components/NotebookView.jsx
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
-  Brain, Upload, File, X, Send, Loader2,
-  ArrowLeft, FolderOpen, Download, Trash2, MessageSquareX,
+  Brain, X, Send, Loader2,
+  ArrowLeft, FolderOpen, Download, MessageSquareX,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { PRESETS } from "../constant";
 import { readSSE, uniqueStrings } from "../utils";
 import {
   uploadFiles, listFiles, deleteFile, getFileDownloadUrl,
-  listMessages, clearMessages,
-  queryNotebook,
+  listMessages, clearMessages, queryNotebook,
 } from "../api";
 
 // ─── NOTEBOOK VIEW ────────────────────────────────────────────────────────────
-export function NotebookView({ notebook, onBack, theme: t, serverStatus }) {
-  const [papers,    setPapers]    = useState([]);
-  const [messages,  setMessages]  = useState([]);
-  const [input,     setInput]     = useState("");
-  const [loading,   setLoading]   = useState(false);
-  const [ingesting, setIngesting] = useState(false);
-  const [dragOver,  setDragOver]  = useState(false);
-  const [pipeline,  setPipeline]  = useState(null);
-  const [sources,   setSources]   = useState([]);
+export function NotebookView({ notebook, onBack, serverStatus }) {
+  const [papers,      setPapers]      = useState([]);
+  const [messages,    setMessages]    = useState([]);
+  const [input,       setInput]       = useState("");
+  const [loading,     setLoading]     = useState(false);
+  const [ingesting,   setIngesting]   = useState(false);
+  const [dragOver,    setDragOver]    = useState(false);
+  const [pipeline,    setPipeline]    = useState(null);
+  const [sources,     setSources]     = useState([]);
   const [loadingData, setLoadingData] = useState(true);
 
   const fileRef = useRef();
   const chatRef = useRef();
 
-  // ── Load files + message history from DB on mount ──────────────────────────
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -45,9 +43,8 @@ export function NotebookView({ notebook, onBack, theme: t, serverStatus }) {
           content: `Welcome to **${notebook.name}**. Upload sources and start asking questions — I'll ground my answers in your documents.`,
         }]);
       } catch (err) {
-        if (!cancelled) {
+        if (!cancelled)
           setMessages([{ role: "assistant", content: `Failed to load notebook data: ${err.message}` }]);
-        }
       } finally {
         if (!cancelled) setLoadingData(false);
       }
@@ -55,42 +52,29 @@ export function NotebookView({ notebook, onBack, theme: t, serverStatus }) {
     return () => { cancelled = true; };
   }, [notebook.id, notebook.name]);
 
-  // Auto-scroll on new messages
   useEffect(() => {
     setTimeout(() => chatRef.current?.scrollTo({ top: 999999, behavior: "smooth" }), 80);
   }, [messages.length]);
 
-  // ── Upload + ingest files ──────────────────────────────────────────────────
   const ingest = useCallback(async (files) => {
     if (serverStatus !== "ok") {
       setMessages(m => [...m, { role: "assistant", content: "⚠ Backend not running. Please start the server first." }]);
       return;
     }
-
-    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    const MAX_SIZE = 5 * 1024 * 1024;
     const oversized = files.filter(f => f.size > MAX_SIZE);
     const allowed   = files.filter(f => f.size <= MAX_SIZE);
-
-    if (oversized.length > 0) {
-      const names = oversized.map(f => `"${f.name}" (${(f.size / (1024 * 1024)).toFixed(1)}MB)`).join(", ");
-      setMessages(m => [...m, {
-        role: "assistant",
-        content: `⚠ ${oversized.length} file${oversized.length > 1 ? "s" : ""} exceed the 5MB limit and were skipped: ${names}.`,
-      }]);
+    if (oversized.length) {
+      const names = oversized.map(f => `"${f.name}" (${(f.size / (1024 * 1024)).toFixed(1)} MB)`).join(", ");
+      setMessages(m => [...m, { role: "assistant", content: `⚠ ${oversized.length} file${oversized.length > 1 ? "s" : ""} exceed the 5 MB limit and were skipped: ${names}.` }]);
     }
-
-    if (allowed.length === 0) return;
-
+    if (!allowed.length) return;
     setIngesting(true);
     try {
       const { results } = await uploadFiles(notebook.id, allowed);
       const ok   = results.filter(r => r.status === "ok");
       const fail = results.filter(r => r.status !== "ok");
-
-      // Refresh file list from DB so IDs are correct
-      const fresh = await listFiles(notebook.id);
-      setPapers(fresh);
-
+      setPapers(await listFiles(notebook.id));
       const parts = [];
       if (ok.length)   parts.push(`✓ Ingested ${ok.map(r => `"${r.name}" (${r.chunks} chunks)`).join(", ")}.`);
       if (fail.length) parts.push(`✗ Failed: ${fail.map(r => `${r.name} — ${r.reason}`).join(", ")}.`);
@@ -102,64 +86,46 @@ export function NotebookView({ notebook, onBack, theme: t, serverStatus }) {
     }
   }, [serverStatus, notebook.id]);
 
-  // ── Delete a file ──────────────────────────────────────────────────────────
-  const removePaper = useCallback(async (fileId, name) => {
-    setPapers(p => p.filter(x => x.id !== fileId)); // optimistic
-    try {
-      await deleteFile(notebook.id, fileId);
-    } catch (err) {
-      // rollback
-      const fresh = await listFiles(notebook.id);
-      setPapers(fresh);
+  const removePaper = useCallback(async (fileId) => {
+    setPapers(p => p.filter(x => x.id !== fileId));
+    try { await deleteFile(notebook.id, fileId); }
+    catch (err) {
+      setPapers(await listFiles(notebook.id));
       alert(`Delete failed: ${err.message}`);
     }
   }, [notebook.id]);
 
-  // ── Download a file ────────────────────────────────────────────────────────
   const downloadPaper = useCallback(async (fileId) => {
     try {
       const { url, name } = await getFileDownloadUrl(notebook.id, fileId);
-      const a = document.createElement("a");
-      a.href = url; a.download = name; a.click();
-    } catch (err) {
-      alert(`Download failed: ${err.message}`);
-    }
+      Object.assign(document.createElement("a"), { href: url, download: name }).click();
+    } catch (err) { alert(`Download failed: ${err.message}`); }
   }, [notebook.id]);
 
-  // ── Clear chat history ─────────────────────────────────────────────────────
   const handleClearHistory = useCallback(async () => {
     if (!window.confirm("Clear all chat history for this notebook?")) return;
     try {
       await clearMessages(notebook.id);
-      setMessages([{
-        role: "assistant",
-        content: "Chat history cleared. Ask me anything about your sources.",
-      }]);
-    } catch (err) {
-      alert(`Clear failed: ${err.message}`);
-    }
+      setMessages([{ role: "assistant", content: "Chat history cleared. Ask me anything about your sources." }]);
+    } catch (err) { alert(`Clear failed: ${err.message}`); }
   }, [notebook.id]);
 
-  // ── RAG Query ──────────────────────────────────────────────────────────────
   const query = useCallback(async (q) => {
     if (!q.trim()) return;
     setInput("");
     setMessages(m => [...m, { role: "user", content: q }]);
     setLoading(true); setSources([]);
-
     if (serverStatus !== "ok") {
       setMessages(m => [...m, { role: "assistant", content: "⚠ Backend not running." }]);
       setLoading(false); return;
     }
-
     setPipeline([]);
     try {
       const resp = await queryNotebook(notebook.id, q);
       let fullText = ""; let msgAdded = false;
-
       for await (const event of readSSE(resp)) {
-        if (event.type === "status")  { setPipeline(p => [...(p || []), event.text]); }
-        if (event.type === "sources") { setSources(uniqueStrings(event.sources || [])); }
+        if (event.type === "status")  setPipeline(p => [...(p || []), event.text]);
+        if (event.type === "sources") setSources(uniqueStrings(event.sources || []));
         if (event.type === "token") {
           fullText += event.token;
           if (!msgAdded) {
@@ -169,14 +135,10 @@ export function NotebookView({ notebook, onBack, theme: t, serverStatus }) {
             setMessages(m => m.map((msg, i) => i === m.length - 1 ? { ...msg, content: fullText } : msg));
           }
         }
-        if (event.type === "done") {
-          setMessages(m => m.map((msg, i) =>
-            i === m.length - 1 ? { ...msg, content: event.fullText || fullText, streaming: false } : msg
-          ));
-        }
-        if (event.type === "error") {
+        if (event.type === "done")
+          setMessages(m => m.map((msg, i) => i === m.length - 1 ? { ...msg, content: event.fullText || fullText, streaming: false } : msg));
+        if (event.type === "error")
           setMessages(m => [...m, { role: "assistant", content: `Error: ${event.error}` }]);
-        }
       }
     } catch (err) {
       setMessages(m => [...m, { role: "assistant", content: `Connection error: ${err.message}` }]);
@@ -187,227 +149,357 @@ export function NotebookView({ notebook, onBack, theme: t, serverStatus }) {
   }, [serverStatus, notebook.id]);
 
   return (
-    <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-      {/* ── Sources sidebar ── */}
+    <div style={{ display: "flex", width: "100%", height: "100%", overflow: "hidden", background: "#F0F4F9" }}>
+
+      {/* ══════════════════════════════════════
+          COLUMN 1 — Sources
+      ══════════════════════════════════════ */}
       <aside style={{
-        width: 264, flexShrink: 0, display: "flex", flexDirection: "column",
-        background: t.surface, borderRight: `1px solid ${t.border}`,
+        width: 340, flexShrink: 0,
+        display: "flex", flexDirection: "column",
+        background: "#FFFFFF", borderRight: "1px solid #E0E0E0",
+        position: "relative", overflow: "hidden",
       }}>
-        {/* Back + notebook title */}
-        <div style={{ padding: "12px 12px 10px", borderBottom: `1px solid ${t.border}` }}>
+
+        {/* Header */}
+        <div style={{
+          height: 52, padding: "0 14px",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          borderBottom: "1px solid #E0E0E0", flexShrink: 0,
+        }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "#1F1F1F" }}>Sources</span>
+          <button style={{ background: "none", border: "none", cursor: "pointer", color: "#5F6368", display: "flex", padding: 4, borderRadius: 4 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Back + notebook name */}
+        <div style={{ padding: "10px 12px 8px", flexShrink: 0 }}>
           <button
             onClick={onBack}
             style={{
-              display: "flex", alignItems: "center", gap: 5, background: "none", border: "none",
-              cursor: "pointer", color: t.textMuted, fontSize: 11, padding: "3px 0 8px", fontFamily: "inherit",
+              display: "flex", alignItems: "center", gap: 5,
+              background: "none", border: "none", cursor: "pointer",
+              color: "#5F6368", fontSize: 12, padding: "3px 6px",
+              borderRadius: 20, fontFamily: "inherit", marginBottom: 8,
             }}
-            onMouseEnter={e => e.currentTarget.style.color = t.text}
-            onMouseLeave={e => e.currentTarget.style.color = t.textMuted}
+            onMouseEnter={e => { e.currentTarget.style.background = "#F1F3F4"; e.currentTarget.style.color = "#1F1F1F"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#5F6368"; }}
           >
-            <ArrowLeft size={11} /> All notebooks
+            <ArrowLeft size={12} /> All notebooks
           </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <FolderOpen size={14} color={t.textMuted} strokeWidth={1.6} />
-            <span style={{
-              fontWeight: 600, fontSize: 13, color: t.text,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
-              {notebook.name}
-            </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: "#E8F0FE", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <FolderOpen size={13} color="#1A73E8" strokeWidth={1.7} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#1F1F1F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {notebook.name}
+              </p>
+            </div>
           </div>
-          <p style={{ fontSize: 10, color: t.textDim, marginTop: 3 }}>
-            {loadingData ? "Loading…" : `${papers.length} source${papers.length !== 1 ? "s" : ""} · ${papers.reduce((s, p) => s + (p.chunks || 0), 0)} vectors`}
-          </p>
         </div>
 
-        {/* Drop zone */}
-        <DropZone
-          ingesting={ingesting} dragOver={dragOver}
-          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={e => { e.preventDefault(); setDragOver(false); ingest([...e.dataTransfer.files]); }}
-          onClick={() => fileRef.current.click()}
-          theme={t}
-        />
+        {/* Add source button */}
+        <div style={{ padding: "0 12px 8px", flexShrink: 0 }}>
+          <button
+            onClick={() => fileRef.current.click()}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+              width: "100%", padding: "8px 0", borderRadius: 24,
+              fontSize: 13, fontWeight: 500, border: "1px solid #DADCE0",
+              background: "#FFFFFF", color: "#1F1F1F", cursor: "pointer", fontFamily: "inherit",
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = "#F1F3F4"}
+            onMouseLeave={e => e.currentTarget.style.background = "#FFFFFF"}
+          >
+            {ingesting
+              ? <Loader2 size={13} style={{ animation: "spin .7s linear infinite" }} />
+              : <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>}
+            {ingesting ? "Processing…" : "Add source"}
+          </button>
+        </div>
         <input ref={fileRef} type="file" multiple accept=".pdf,.txt,.md" style={{ display: "none" }}
           onChange={e => ingest([...e.target.files])} />
 
-        {/* File list */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 10px 10px", display: "flex", flexDirection: "column", gap: 5 }}>
-          {loadingData
-            ? <p style={{ fontSize: 11, color: t.textDim, textAlign: "center", marginTop: 18 }}>Loading files…</p>
-            : papers.length === 0
-            ? <p style={{ fontSize: 11, color: t.textDim, textAlign: "center", marginTop: 18 }}>No sources yet</p>
-            : papers.map(p => (
-              <div key={p.id} style={{
-                display: "flex", alignItems: "flex-start", gap: 7,
-                background: t.surface2, border: `1px solid ${t.border}`, borderRadius: 7, padding: "7px 8px",
-              }}>
-                <File size={11} color={t.textMuted} style={{ marginTop: 1, flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 11, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</p>
-                  <p style={{ fontSize: 10, color: t.textMuted }}>{p.chunks} chunks · {((p.size || p.sizeBytes || 0) / 1024).toFixed(1)}KB</p>
-                </div>
-                <button onClick={() => downloadPaper(p.id)} title="Download"
-                  style={{ background: "none", border: "none", cursor: "pointer", color: t.textDim, display: "flex", padding: 2 }}
-                  onMouseEnter={e => e.currentTarget.style.color = t.text}
-                  onMouseLeave={e => e.currentTarget.style.color = t.textDim}
-                >
-                  <Download size={10} />
-                </button>
-                <button onClick={() => removePaper(p.id, p.name)} title="Delete"
-                  style={{ background: "none", border: "none", cursor: "pointer", color: t.textDim, display: "flex", padding: 2 }}
-                  onMouseEnter={e => e.currentTarget.style.color = t.errColor}
-                  onMouseLeave={e => e.currentTarget.style.color = t.textDim}
-                >
-                  <X size={10} />
-                </button>
-              </div>
-            ))
-          }
+        {/* Web search pill */}
+        <div style={{
+          margin: "0 12px 6px", display: "flex", alignItems: "center", gap: 8,
+          background: "#F1F3F4", borderRadius: 24, padding: "6px 14px", flexShrink: 0,
+        }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5F6368" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+          </svg>
+          <span style={{ fontSize: 12, color: "#5F6368" }}>Search for new sources on the web</span>
         </div>
 
-        {/* Cited sources from last query */}
+        {/* Select all */}
+        <div style={{ padding: "4px 16px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+          <span style={{ fontSize: 12, color: "#3C4043" }}>Select all sources</span>
+          <div style={{ width: 18, height: 18, borderRadius: 4, background: "#1A73E8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Drag-over hint */}
+        {dragOver && (
+          <div style={{ margin: "0 12px 6px", borderRadius: 10, border: "1.5px dashed #1A73E8", background: "#E8F0FE", padding: 8, textAlign: "center", flexShrink: 0 }}>
+            <p style={{ fontSize: 12, color: "#1A73E8" }}>Drop files here</p>
+          </div>
+        )}
+
+        {/* Full-column drag target */}
+        <div
+          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={e => { e.preventDefault(); setDragOver(false); ingest([...e.dataTransfer.files]); }}
+          style={{ position: "absolute", inset: 0, zIndex: dragOver ? 5 : -1 }}
+        />
+
+        {/* File list */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 6px 8px", display: "flex", flexDirection: "column", gap: 1 }}>
+          {loadingData ? (
+            <p style={{ fontSize: 12, color: "#80868B", textAlign: "center", marginTop: 20 }}>Loading files…</p>
+          ) : papers.length === 0 ? (
+            <p style={{ fontSize: 12, color: "#80868B", textAlign: "center", marginTop: 20 }}>No sources yet</p>
+          ) : papers.map(p => (
+            <div key={p.id}
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: 8 }}
+              onMouseEnter={e => e.currentTarget.style.background = "#F1F3F4"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            >
+              <div style={{ width: 26, height: 32, borderRadius: 4, flexShrink: 0, background: "#FDECEA", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: 8, fontWeight: 800, color: "#C5221F" }}>PDF</span>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 12, color: "#1F1F1F", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</p>
+                <p style={{ fontSize: 10, color: "#80868B", marginTop: 1 }}>{p.chunks} chunks · {((p.size || p.sizeBytes || 0) / 1024).toFixed(1)} KB</p>
+              </div>
+              <button onClick={() => downloadPaper(p.id)} title="Download"
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#80868B", display: "flex", padding: 3, borderRadius: 20, flexShrink: 0 }}
+                onMouseEnter={e => e.currentTarget.style.color = "#1F1F1F"}
+                onMouseLeave={e => e.currentTarget.style.color = "#80868B"}
+              ><Download size={11} /></button>
+              <button onClick={() => removePaper(p.id)} title="Remove"
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#80868B", display: "flex", padding: 3, borderRadius: 20, flexShrink: 0 }}
+                onMouseEnter={e => e.currentTarget.style.color = "#C5221F"}
+                onMouseLeave={e => e.currentTarget.style.color = "#80868B"}
+              ><X size={11} /></button>
+            </div>
+          ))}
+        </div>
+
+        {/* Cited sources */}
         {sources.length > 0 && (
-          <div style={{ margin: "0 10px 10px", padding: "8px 10px", borderRadius: 7, background: t.surface2, border: `1px solid ${t.border}` }}>
-            <p style={{ fontSize: 9, color: t.textDim, marginBottom: 5, letterSpacing: ".07em" }}>CITED IN LAST ANSWER</p>
-            {sources.map(s => <p key={s} style={{ fontSize: 10.5, color: t.textMuted, padding: "2px 0" }}>• {s}</p>)}
+          <div style={{ margin: "0 10px 10px", padding: "9px 11px", borderRadius: 8, background: "#E8F0FE", flexShrink: 0 }}>
+            <p style={{ fontSize: 10, color: "#1A73E8", letterSpacing: ".07em", fontWeight: 600, marginBottom: 5 }}>CITED IN LAST ANSWER</p>
+            {sources.map(s => <p key={s} style={{ fontSize: 11, color: "#1558B0", padding: "2px 0" }}>• {s}</p>)}
           </div>
         )}
       </aside>
 
-      {/* ── Chat area ── */}
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: t.bg }}>
-        {/* Preset bar + clear history button */}
+      {/* ══════════════════════════════════════
+          COLUMN 2 — Conversation
+      ══════════════════════════════════════ */}
+      <main style={{
+        flex: 1, display: "flex", flexDirection: "column",
+        overflow: "hidden", background: "#F0F4F9",
+        borderRight: "1px solid #E0E0E0",
+      }}>
+
+        {/* Header */}
         <div style={{
-          display: "flex", gap: 6, padding: "8px 14px",
-          borderBottom: `1px solid ${t.border}`, flexWrap: "wrap",
-          background: t.surface, alignItems: "center",
+          height: 52, padding: "0 16px",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          background: "#FFFFFF", borderBottom: "1px solid #E0E0E0", flexShrink: 0,
+        }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "#1F1F1F" }}>Conversation</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <button style={{ background: "none", border: "none", cursor: "pointer", color: "#5F6368", display: "flex", padding: 6, borderRadius: 20 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="18" x2="20" y2="18" />
+                <circle cx="8" cy="6" r="2" fill="white" stroke="currentColor" strokeWidth="2" />
+                <circle cx="16" cy="12" r="2" fill="white" stroke="currentColor" strokeWidth="2" />
+                <circle cx="8" cy="18" r="2" fill="white" stroke="currentColor" strokeWidth="2" />
+              </svg>
+            </button>
+            <button style={{ background: "none", border: "none", cursor: "pointer", color: "#5F6368", display: "flex", padding: 6, borderRadius: 20 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Preset chips */}
+        <div style={{
+          padding: "8px 14px", display: "flex", gap: 6, flexWrap: "wrap",
+          background: "#F0F4F9", borderBottom: "1px solid #E0E0E0", flexShrink: 0, alignItems: "center",
         }}>
           {PRESETS.map(({ Icon: PI, label, prompt }) => (
             <button key={label} onClick={() => query(prompt)} style={{
-              display: "flex", alignItems: "center", gap: 5, padding: "5px 11px",
-              borderRadius: 6, fontSize: 11, border: `1px solid ${t.border}`,
-              background: t.surface2, color: t.textMuted, cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 5,
+              padding: "5px 14px", borderRadius: 20, fontSize: 12,
+              border: "1px solid #DADCE0", background: "#FFFFFF", color: "#3C4043",
+              cursor: "pointer", fontFamily: "inherit",
             }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = t.border2; e.currentTarget.style.color = t.text; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.color = t.textMuted; }}
+              onMouseEnter={e => e.currentTarget.style.background = "#F1F3F4"}
+              onMouseLeave={e => e.currentTarget.style.background = "#FFFFFF"}
             >
-              <PI size={12} color={t.textMuted} />{label}
+              <PI size={12} color="#5F6368" />{label}
             </button>
           ))}
           <div style={{ flex: 1 }} />
-          <button onClick={handleClearHistory} title="Clear chat history" style={{
-            display: "flex", alignItems: "center", gap: 5, padding: "5px 10px",
-            borderRadius: 6, fontSize: 11, border: `1px solid ${t.border}`,
-            background: "none", color: t.textDim, cursor: "pointer",
+          <button onClick={handleClearHistory} style={{
+            display: "flex", alignItems: "center", gap: 5,
+            padding: "5px 12px", borderRadius: 20, fontSize: 12,
+            border: "1px solid #DADCE0", background: "#FFFFFF", color: "#5F6368",
+            cursor: "pointer", fontFamily: "inherit",
           }}
-            onMouseEnter={e => { e.currentTarget.style.color = t.errColor; e.currentTarget.style.borderColor = t.errColor; }}
-            onMouseLeave={e => { e.currentTarget.style.color = t.textDim; e.currentTarget.style.borderColor = t.border; }}
+            onMouseEnter={e => { e.currentTarget.style.color = "#C5221F"; e.currentTarget.style.borderColor = "#C5221F"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "#5F6368"; e.currentTarget.style.borderColor = "#DADCE0"; }}
           >
             <MessageSquareX size={12} /> Clear history
           </button>
         </div>
 
         {/* Messages */}
-        <div ref={chatRef} style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
-          {loadingData
-            ? <div style={{ display: "flex", justifyContent: "center", marginTop: 40 }}>
-                <Loader2 size={20} color={t.textDim} style={{ animation: "spin .8s linear infinite" }} />
-              </div>
-            : messages.map((m, i) => <ChatMessage key={m.id || i} message={m} theme={t} />)
-          }
+        <div ref={chatRef} style={{
+          flex: 1, overflowY: "auto", padding: "10px 72px",
+          display: "flex", flexDirection: "column", gap: 20,
+        }}>
+          {loadingData ? (
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 60 }}>
+              <Loader2 size={22} color="#80868B" style={{ animation: "spin .8s linear infinite" }} />
+            </div>
+          ) : messages.map((m, i) => (
+            <ChatMessage key={m.id || i} message={m} />
+          ))}
           {loading && !messages[messages.length - 1]?.streaming && (
-            <ThinkingBubble pipeline={pipeline} theme={t} />
+            <ThinkingBubble pipeline={pipeline} />
           )}
         </div>
 
-        {/* Input */}
-        <div style={{ padding: "12px 16px", borderTop: `1px solid ${t.border}`, background: t.surface }}>
+        {/* Input area */}
+        <div style={{ padding: "10px 72px 16px", background: "#F0F4F9", flexShrink: 0 }}>
+          <p style={{ textAlign: "center", fontSize: 11, color: "#80868B", marginBottom: 10 }}>
+            {new Date().toLocaleDateString(undefined, { weekday: "long" })} •{" "}
+            {new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+          </p>
+
           <div style={{
-            display: "flex", alignItems: "center", gap: 10, background: t.inputBg,
-            border: `1px solid ${t.border}`, borderRadius: 12, padding: "8px 10px 8px 14px",
+            display: "flex", alignItems: "center", gap: 10,
+            background: "#FFFFFF", border: "1px solid #DADCE0",
+            borderRadius: 28, padding: "10px 10px 10px 20px",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
           }}>
             <input
-              style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 13, color: t.text, fontFamily: "inherit" }}
-              placeholder={papers.length ? "Ask about your sources…" : "Upload sources first, then ask questions…"}
+              style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, color: "#1F1F1F", fontFamily: "inherit" }}
+              placeholder={papers.length ? "Start typing…" : "Upload sources first, then ask questions…"}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !e.shiftKey && query(input)}
             />
+            {papers.length > 0 && (
+              <span style={{ fontSize: 12, color: "#5F6368", background: "#F1F3F4", borderRadius: 12, padding: "2px 10px", whiteSpace: "nowrap", border: "1px solid #DADCE0" }}>
+                {papers.length} source{papers.length !== 1 ? "s" : ""}
+              </span>
+            )}
             <button
-              onClick={() => query(input)} disabled={loading || !input.trim()}
+              onClick={() => query(input)}
+              disabled={loading || !input.trim()}
               style={{
-                width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center",
-                justifyContent: "center",
-                cursor: loading || !input.trim() ? "default" : "pointer",
-                background: loading || !input.trim() ? t.surface2 : t.text,
-                border: `1px solid ${t.border}`,
+                width: 36, height: 36, borderRadius: 18,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: loading || !input.trim() ? "#E8EAED" : "#1F1F1F",
+                border: "none", cursor: loading || !input.trim() ? "default" : "pointer", flexShrink: 0,
               }}
             >
               {loading
-                ? <Loader2 size={14} color={t.textMuted} style={{ animation: "spin .7s linear infinite" }} />
-                : <Send size={14} color={!input.trim() ? t.textMuted : t.bg} />
-              }
+                ? <Loader2 size={15} color="#80868B" style={{ animation: "spin .7s linear infinite" }} />
+                : <Send size={15} color={!input.trim() ? "#80868B" : "#FFFFFF"} />}
             </button>
           </div>
+
+          <p style={{ textAlign: "center", fontSize: 11, color: "#80868B", marginTop: 8 }}>
+            Responses are grounded in your sources but may not always be accurate — verify important answers.
+          </p>
         </div>
       </main>
     </div>
   );
 }
 
-// ─── DROP ZONE ────────────────────────────────────────────────────────────────
-function DropZone({ ingesting, dragOver, onDragOver, onDragLeave, onDrop, onClick, theme: t }) {
-  return (
-    <div
-      style={{
-        margin: "10px 10px 6px", borderRadius: 8,
-        border: `1.5px dashed ${dragOver ? t.text : t.border2}`,
-        background: dragOver ? t.surface2 : "transparent",
-        padding: "12px 8px", textAlign: "center", cursor: "pointer", transition: "all .2s",
-      }}
-      onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop} onClick={onClick}
-    >
-      {ingesting
-        ? <Loader2 size={16} color={t.textMuted} style={{ margin: "0 auto 5px", display: "block", animation: "spin .7s linear infinite" }} />
-        : <Upload size={16} color={dragOver ? t.text : t.textDim} style={{ margin: "0 auto 5px", display: "block" }} />}
-      <p style={{ fontSize: 11, color: ingesting ? t.text : t.textMuted }}>{ingesting ? "Processing…" : "Add sources"}</p>
-      <p style={{ fontSize: 10, color: t.textDim, marginTop: 1 }}>PDF · TXT · MD · max 5MB</p>
-    </div>
-  );
-}
-
 // ─── CHAT MESSAGE ─────────────────────────────────────────────────────────────
-function ChatMessage({ message: m, theme: t }) {
+function ChatMessage({ message: m }) {
+  const isUser = m.role === "user";
   return (
-    <div style={{
-      display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start",
-      gap: 8, alignItems: "flex-start", animation: "fadeIn .2s ease forwards",
-    }}>
-      {m.role === "assistant" && (
+    <div style={{ display: "flex", flexDirection: isUser ? "row-reverse" : "row", gap: 10, alignItems: "flex-start" }}>
+      {!isUser && (
         <div style={{
-          width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center",
-          justifyContent: "center", background: t.surface2, border: `1px solid ${t.border}`,
-          flexShrink: 0, marginTop: 2,
+          width: 30, height: 30, borderRadius: "50%", flexShrink: 0, marginTop: 2,
+          background: "#E8F0FE", border: "1px solid rgba(26,115,232,0.2)",
+          display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-          <Brain size={13} color={t.textMuted} strokeWidth={1.8} />
+          <Brain size={14} color="#1A73E8" strokeWidth={1.8} />
         </div>
       )}
-      <div style={{
-        maxWidth: "70%", borderRadius: 12, padding: "10px 14px",
-        fontSize: 13, lineHeight: 1.65,
-        background: m.role === "user" ? t.msgUser : t.surface,
-        color:      m.role === "user" ? t.msgUserTxt : t.text,
-        border:     m.role === "assistant" ? `1px solid ${t.border}` : "none",
-        whiteSpace: "pre-wrap",
-      }}>
-        <ReactMarkdown>{m.content}</ReactMarkdown>
-        {m.streaming && (
-          <span style={{
-            display: "inline-block", width: 8, height: 14, background: t.text,
-            marginLeft: 2, animation: "blink .8s step-end infinite", verticalAlign: "text-bottom",
-          }} />
+      <div>
+        <div style={{
+          maxWidth: 560,
+          borderRadius: isUser ? "18px 18px 4px 18px" : "4px 18px 18px 18px",
+          padding: "10px 16px", fontSize: 14, lineHeight: 1.65,
+          background: isUser ? "#1A73E8" : "#FFFFFF",
+          color:      isUser ? "#FFFFFF"  : "#1F1F1F",
+          border:     !isUser ? "1px solid #E0E0E0" : "none",
+          boxShadow:  !isUser ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+        }}>
+          <ReactMarkdown>{m.content}</ReactMarkdown>
+          {m.streaming && (
+            <span style={{
+              display: "inline-block", width: 2, height: 14,
+              background: isUser ? "#FFFFFF" : "#1A73E8",
+              marginLeft: 2, animation: "blink .8s step-end infinite", verticalAlign: "text-bottom",
+            }} />
+          )}
+        </div>
+
+        {/* Assistant action row */}
+        {!isUser && !m.streaming && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, paddingLeft: 4 }}>
+            <button style={{
+              display: "flex", alignItems: "center", gap: 5,
+              padding: "4px 10px", borderRadius: 20, fontSize: 11,
+              border: "1px solid #DADCE0", background: "transparent",
+              color: "#5F6368", cursor: "pointer", fontFamily: "inherit",
+            }}>
+              ✎ Save to notes
+            </button>
+            {/* Copy */}
+            <button style={{ background: "none", border: "none", cursor: "pointer", color: "#80868B", display: "flex", padding: 4, borderRadius: 20 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+              </svg>
+            </button>
+            {/* Thumbs up */}
+            <button style={{ background: "none", border: "none", cursor: "pointer", color: "#80868B", display: "flex", padding: 4, borderRadius: 20 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z" />
+                <path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3" />
+              </svg>
+            </button>
+            {/* Thumbs down */}
+            <button style={{ background: "none", border: "none", cursor: "pointer", color: "#80868B", display: "flex", padding: 4, borderRadius: 20 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z" />
+                <path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17" />
+              </svg>
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -415,36 +507,34 @@ function ChatMessage({ message: m, theme: t }) {
 }
 
 // ─── THINKING BUBBLE ─────────────────────────────────────────────────────────
-function ThinkingBubble({ pipeline, theme: t }) {
+function ThinkingBubble({ pipeline }) {
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+    <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
       <div style={{
-        width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center",
-        justifyContent: "center", background: t.surface2, border: `1px solid ${t.border}`,
-        flexShrink: 0, marginTop: 2,
+        width: 30, height: 30, borderRadius: "50%", flexShrink: 0, marginTop: 2,
+        background: "#E8F0FE", border: "1px solid rgba(26,115,232,0.2)",
+        display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <Brain size={13} color={t.textMuted} strokeWidth={1.8} />
+        <Brain size={14} color="#1A73E8" strokeWidth={1.8} />
       </div>
-      <div style={{ borderRadius: 12, padding: "10px 14px", background: t.surface, border: `1px solid ${t.border}` }}>
+      <div style={{
+        borderRadius: "4px 18px 18px 18px", padding: "10px 16px",
+        background: "#FFFFFF", border: "1px solid #E0E0E0",
+        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+      }}>
         {pipeline?.length ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             {pipeline.map((s, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-                <div style={{
-                  width: 5, height: 5, borderRadius: "50%",
-                  background: i === pipeline.length - 1 ? t.text : t.textMuted, flexShrink: 0,
-                }} />
-                <span style={{ color: i === pipeline.length - 1 ? t.text : t.textMuted, fontFamily: "monospace" }}>{s}</span>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12 }}>
+                <div style={{ width: 5, height: 5, borderRadius: "50%", background: i === pipeline.length - 1 ? "#1A73E8" : "#80868B", flexShrink: 0 }} />
+                <span style={{ color: i === pipeline.length - 1 ? "#1F1F1F" : "#80868B", fontFamily: "monospace" }}>{s}</span>
               </div>
             ))}
           </div>
         ) : (
           <div style={{ display: "flex", gap: 5 }}>
             {[0, 1, 2].map(i => (
-              <div key={i} style={{
-                width: 7, height: 7, borderRadius: "50%", background: t.textMuted,
-                animation: `dot 1.4s ease infinite`, animationDelay: `${i * .2}s`,
-              }} />
+              <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: "#80868B", animation: "dot 1.4s ease infinite", animationDelay: `${i * .2}s` }} />
             ))}
           </div>
         )}
@@ -453,4 +543,5 @@ function ThinkingBubble({ pipeline, theme: t }) {
   );
 }
 
+export function DropZone() { return null; }
 export default NotebookView;
