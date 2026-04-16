@@ -5,6 +5,7 @@ import { themes, buildGlobalCSS } from "./theme";
 import { checkHealth } from "./api";
 import { RAGAssistant } from "./components/RAGAssistant";
 import { FlowCanvasWrapper } from "./components/FlowCanvas";
+import PipelineDemo from "./components/table/pipeline";
 
 export default function App() {
   const [page, setPage] = useState("rag");
@@ -139,7 +140,9 @@ export default function App() {
             />
           )}
           {page === "flow" && (
-            <FlowCanvasWrapper theme={t} serverStatus={serverStatus} />
+            <div style={{ display: "flex", width: "100%", overflow: "hidden" }}>
+              <PipelineDemo theme={t} />
+            </div>
           )}
         </div>
       </div>
