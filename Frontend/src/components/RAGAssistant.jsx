@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { listNotebooks, createNotebook, deleteNotebook, renameNotebook } from "../api";
 import { formatDate } from "../utils";
-import { NotebookView } from "./NotebookView";
+import { Notebook } from "./NotebookView";
 
 // ─── NOTEBOOK CARD ────────────────────────────────────────────────────────────
 function NotebookCard({ notebook, onOpen, onDelete, onRename, theme: t }) {
@@ -206,7 +206,7 @@ export function RAGAssistant({ theme: t, serverStatus, notebooks, setNotebooks }
   const activeNotebook = notebooks.find(nb => nb.id === activeId);
   if (activeNotebook) {
     return (
-      <NotebookView
+      <Notebook
         notebook={activeNotebook}
         onBack={() => { setActiveId(null); fetchNotebooks(); }}
         theme={t}

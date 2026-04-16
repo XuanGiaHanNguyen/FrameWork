@@ -60,7 +60,7 @@ export const themes = {
 export function buildGlobalCSS(t) {
   return `
     @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; }
     body { background: ${t.bg}; color: ${t.text}; font-family: 'DM Sans', sans-serif; height: 100vh; overflow: hidden; }
     #root { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
     @keyframes spin  { to { transform: rotate(360deg); } }

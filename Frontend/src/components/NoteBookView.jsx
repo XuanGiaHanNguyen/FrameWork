@@ -243,7 +243,7 @@ function ThinkingBubble({ pipeline }) {
 }
 
 // ─── NOTEBOOK VIEW ────────────────────────────────────────────────────────────
-export function NotebookView({ notebook, onBack, serverStatus }) {
+export function Notebook({ notebook, onBack, serverStatus }) {
   const [papers,      setPapers]      = useState([]);
   const [messages,    setMessages]    = useState([]);
   const [input,       setInput]       = useState("");
@@ -492,4 +492,4 @@ export function NotebookView({ notebook, onBack, serverStatus }) {
 }
 
 export function DropZone() { return null; }
-export default NotebookView;
+export default Notebook;
