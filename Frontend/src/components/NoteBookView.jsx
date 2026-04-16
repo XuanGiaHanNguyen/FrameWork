@@ -5,8 +5,7 @@ import {
   Download, MessageSquareX,
   ArrowLeft, ChevronDown, Globe, Sparkles, Search,
   Plus, MoreVertical, SlidersHorizontal,
-  Mic, Volume2, LayoutTemplate, FileText,
-  Map, BookOpen, FileQuestion, BarChart3, Table,
+  FileText, Map, FileQuestion, Table,
   PanelLeftClose, PanelRightClose, Check,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -17,104 +16,62 @@ import {
   listMessages, clearMessages, queryNotebook,
 } from "../api";
 
-// ─── GLOBAL KEYFRAMES (injected once) ────────────────────────────────────────
-const GLOBAL_CSS = `
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  @keyframes spin   { to { transform: rotate(360deg); } }
-  @keyframes blink  { 0%,100%{opacity:1;}50%{opacity:0;} }
-  @keyframes dot    { 0%,80%,100%{transform:scale(0.6);opacity:0.4;}40%{transform:scale(1);opacity:1;} }
-  @keyframes fadeIn { from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);} }
-  @keyframes pulse  { 0%,100%{opacity:1;}50%{opacity:0.4;} }
-  .nb-prose p{margin-bottom:.45em;}
-  .nb-prose p:last-child{margin-bottom:0;}
-  .nb-prose ul,.nb-prose ol{padding-left:1.3em;margin-bottom:.45em;}
-  .nb-prose li{margin-bottom:.2em;}
-  .nb-prose strong{font-weight:600;}
-  .nb-prose h1,.nb-prose h2,.nb-prose h3{font-weight:600;margin:.7em 0 .35em;}
-  .nb-prose code{background:#F3F4F6;padding:1px 5px;border-radius:4px;font-size:.84em;}
-  .nb-prose pre{background:#F3F4F6;padding:10px 14px;border-radius:8px;overflow-x:auto;font-size:.82em;margin-bottom:.45em;}
-  .nb-prose a{color:#9CA3AF;text-decoration:none;}
-  .nb-prose a:hover{text-decoration:underline;}
-`;
-
-function GlobalStyle() {
-  useEffect(() => {
-    const el = document.createElement("style");
-    el.textContent = GLOBAL_CSS;
-    document.head.appendChild(el);
-    return () => document.head.removeChild(el);
-  }, []);
-  return null;
-}
-
-// ─── COLOUR TOKENS ────────────────────────────────────────────────────────────
-const C = {
-  bg:         "#F3F4F6",
-  surface:    "#FFFFFF",
-  border:     "#E5E7EB",
-  borderSoft: "#F3F4F6",
-  text:       "#111827",
-  textSub:    "#6B7280",
-  textMuted:  "#9CA3AF",
-  accent:     "#374151",
-  userBubble: "#374151",
-};
-
 // ─── STUDIO CARDS DATA ────────────────────────────────────────────────────────
 const STUDIO_CARDS = [
-  { icon: Mic,            label: "Audio...",    beta: false },
-  { icon: LayoutTemplate, label: "Slide Deck",  beta: true  },
-  { icon: Volume2,        label: "Video...",    beta: false },
-  { icon: Map,            label: "Mind Map",    beta: false },
-  { icon: FileText,       label: "Reports",     beta: false },
-  { icon: BookOpen,       label: "Flashcards",  beta: false },
-  { icon: FileQuestion,   label: "Quiz",        beta: false },
-  { icon: BarChart3,      label: "Infograp...", beta: true  },
-  { icon: Table,          label: "Data Table",  beta: false },
+  { icon: Map,      label: "Mind Map",   beta: false },
+  { icon: FileText, label: "Reports",    beta: false },
+  { icon: Table,    label: "Data Table", beta: false },
 ];
 
 // ─── REUSABLE MINI COMPONENTS ─────────────────────────────────────────────────
 
 function IconBtn({ onClick, title, children, size = 32 }) {
-  const [hov, setHov] = useState(false);
   return (
-    <button onClick={onClick} title={title}
-      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ width: size, height: size, borderRadius: "50%", border: "none", background: hov ? "#F3F4F6" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: C.textSub, transition: "background .15s", flexShrink: 0 }}>
+    <button
+      onClick={onClick}
+      title={title}
+      style={{ width: size, height: size }}
+      className="rounded-full border-none bg-transparent hover:bg-gray-100 cursor-pointer flex items-center justify-center text-gray-500 transition-colors duration-150 shrink-0"
+    >
       {children}
     </button>
   );
 }
 
 function GhostBtn({ onClick, children, fullWidth }) {
-  const [hov, setHov] = useState(false);
   return (
-    <button onClick={onClick}
-      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: fullWidth ? "100%" : undefined, padding: "8px 16px", borderRadius: 20, fontSize: 13, fontWeight: 500, border: `1px solid ${C.border}`, background: hov ? "#F9FAFB" : C.surface, color: C.text, cursor: "pointer", transition: "background .15s" }}>
+    <button
+      onClick={onClick}
+      className={`flex items-center justify-center gap-1.5 ${fullWidth ? "w-full" : ""} px-4 py-2 rounded-full text-[13px] font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-900 cursor-pointer transition-colors duration-150`}
+    >
       {children}
     </button>
   );
 }
 
 function Chip({ onClick, children }) {
-  const [hov, setHov] = useState(false);
   return (
-    <button onClick={onClick}
-      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 12px", borderRadius: 16, fontSize: 12, border: `1px solid ${C.border}`, background: hov ? "#F3F4F6" : "#fff", color: C.textSub, cursor: "pointer", transition: "background .15s" }}>
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1 px-3 py-1 rounded-2xl text-xs border border-gray-200 bg-white hover:bg-gray-100 text-gray-500 cursor-pointer transition-colors duration-150"
+    >
       {children}
     </button>
   );
 }
 
 function CollapseStrip({ onClick, title, side }) {
-  const [hov, setHov] = useState(false);
   return (
-    <div style={{ width: 38, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 12, background: C.surface, [side === "left" ? "borderRight" : "borderLeft"]: `1px solid ${C.border}` }}>
-      <button onClick={onClick} title={title}
-        onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-        style={{ width: 30, height: 30, borderRadius: "50%", border: "none", background: hov ? "#F3F4F6" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: C.textSub, transition: "background .15s" }}>
+    <div
+      className={`w-[38px] shrink-0 flex flex-col items-center pt-3 bg-white ${
+        side === "left" ? "border-r" : "border-l"
+      } border-gray-200`}
+    >
+      <button
+        onClick={onClick}
+        title={title}
+        className="w-[30px] h-[30px] rounded-full border-none bg-transparent hover:bg-gray-100 cursor-pointer flex items-center justify-center text-gray-500 transition-colors duration-150"
+      >
         {side === "left" ? <PanelRightClose size={15} /> : <PanelLeftClose size={15} />}
       </button>
     </div>
@@ -122,24 +79,32 @@ function CollapseStrip({ onClick, title, side }) {
 }
 
 function SourceRow({ paper: p, onDownload, onRemove }) {
-  const [hov, setHov] = useState(false);
   return (
-    <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 8px", borderRadius: 8, background: hov ? "#F9FAFB" : "transparent", cursor: "pointer", transition: "background .15s" }}>
-      <div style={{ width: 26, height: 34, borderRadius: 4, flexShrink: 0, background: "#F3F4F6", border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontSize: 7, fontWeight: 800, color: C.textSub, letterSpacing: ".02em" }}>PDF</span>
+    <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-150">
+      <div className="w-[26px] h-[34px] rounded shrink-0 bg-gray-100 border border-gray-200 flex items-center justify-center">
+        <span className="text-[7px] font-extrabold text-gray-500 tracking-wide">PDF</span>
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 13, color: C.text, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</p>
-        <p style={{ fontSize: 11, color: C.textMuted, marginTop: 1 }}>{p.chunks} chunks · {((p.size || p.sizeBytes || 0) / 1024).toFixed(1)} KB</p>
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] text-gray-900 font-medium truncate">{p.name}</p>
+        <p className="text-[11px] text-gray-400 mt-px">
+          {p.chunks} chunks · {((p.size || p.sizeBytes || 0) / 1024).toFixed(1)} KB
+        </p>
       </div>
-      <div style={{ width: 18, height: 18, borderRadius: 3, background: C.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <div className="w-[18px] h-[18px] rounded-[3px] bg-gray-700 flex items-center justify-center shrink-0">
         <Check size={11} color="white" strokeWidth={3} />
       </div>
-      <button onClick={e => { e.stopPropagation(); onDownload(); }} title="Download" style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, display: "flex", padding: 3 }}>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDownload(); }}
+        title="Download"
+        className="bg-transparent border-none cursor-pointer text-gray-400 flex p-0.5 hover:text-gray-600"
+      >
         <Download size={12} />
       </button>
-      <button onClick={e => { e.stopPropagation(); onRemove(); }} title="Remove" style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, display: "flex", padding: 3 }}>
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+        title="Remove"
+        className="bg-transparent border-none cursor-pointer text-gray-400 flex p-0.5 hover:text-gray-600"
+      >
         <X size={12} />
       </button>
     </div>
@@ -147,30 +112,28 @@ function SourceRow({ paper: p, onDownload, onRemove }) {
 }
 
 function StudioCard({ icon: Icon, label, beta }) {
-  const [hov, setHov] = useState(false);
   return (
-    <button onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 12px", borderRadius: 10, background: hov ? "#EBEBEB" : "#F3F4F6", border: "none", cursor: "pointer", textAlign: "left", position: "relative", transition: "background .15s" }}>
-      <Icon size={16} color={C.textSub} strokeWidth={1.8} />
-      <span style={{ fontSize: 12, fontWeight: 500, color: C.text }}>{label}</span>
+    <button className="relative flex items-center gap-2 px-3 py-[11px] rounded-xl bg-gray-100 hover:bg-[#EBEBEB] border-none cursor-pointer text-left transition-colors duration-150">
+      <Icon size={16} className="text-gray-500" strokeWidth={1.8} />
+      <span className="text-xs font-medium text-gray-900">{label}</span>
       {beta && (
-        <span style={{ position: "absolute", top: 5, right: 6, fontSize: 8, fontWeight: 700, color: C.textMuted, background: "#E5E7EB", borderRadius: 3, padding: "1px 4px", letterSpacing: ".04em" }}>BETA</span>
+        <span className="absolute top-1 right-1.5 text-[8px] font-bold text-gray-400 bg-gray-200 rounded-[3px] px-1 py-px tracking-wider">
+          BETA
+        </span>
       )}
     </button>
   );
 }
 
 function NoteRow({ note }) {
-  const [hov, setHov] = useState(false);
   return (
-    <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 8px", borderRadius: 9, cursor: "pointer", background: hov ? "#F9FAFB" : "transparent", marginBottom: 2, transition: "background .15s" }}>
-      <div style={{ width: 34, height: 34, borderRadius: 7, background: "#F3F4F6", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <note.icon size={15} color={C.textSub} strokeWidth={1.8} />
+    <div className="flex items-center gap-2 px-2 py-1.5 rounded-[9px] cursor-pointer hover:bg-gray-50 mb-0.5 transition-colors duration-150">
+      <div className="w-[34px] h-[34px] rounded-[7px] bg-gray-100 shrink-0 flex items-center justify-center">
+        <note.icon size={15} className="text-gray-500" strokeWidth={1.8} />
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 13, color: C.text, fontWeight: 500 }}>{note.label}</p>
-        <p style={{ fontSize: 11, color: C.textMuted }}>2 sources · {note.time}</p>
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] text-gray-900 font-medium">{note.label}</p>
+        <p className="text-[11px] text-gray-400">2 sources · {note.time}</p>
       </div>
       <IconBtn size={28}><MoreVertical size={13} /></IconBtn>
     </div>
@@ -181,30 +144,49 @@ function NoteRow({ note }) {
 function ChatMessage({ message: m }) {
   const isUser = m.role === "user";
   return (
-    <div style={{ display: "flex", flexDirection: isUser ? "row-reverse" : "row", gap: 10, alignItems: "flex-start", animation: "fadeIn .2s ease" }}>
+    <div
+      className={`flex gap-2.5 items-start animate-[fadeIn_.2s_ease] ${isUser ? "flex-row-reverse" : "flex-row"}`}
+    >
       {!isUser && (
-        <div style={{ width: 30, height: 30, borderRadius: "50%", flexShrink: 0, marginTop: 2, background: "#E5E7EB", border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Brain size={13} color={C.textSub} strokeWidth={1.8} />
+        <div className="w-[30px] h-[30px] rounded-full shrink-0 mt-0.5 bg-gray-200 border border-gray-200 flex items-center justify-center">
+          <Brain size={13} className="text-gray-500" strokeWidth={1.8} />
         </div>
       )}
-      <div style={{ maxWidth: isUser ? 460 : 560 }}>
-        <div style={{ borderRadius: isUser ? "18px 18px 5px 18px" : "5px 18px 18px 18px", padding: isUser ? "9px 16px" : "11px 16px", fontSize: 14, lineHeight: 1.65, background: isUser ? C.userBubble : C.surface, color: isUser ? "#fff" : C.text, border: !isUser ? `1px solid ${C.border}` : "none", boxShadow: !isUser ? "0 1px 2px rgba(0,0,0,0.04)" : "none" }}>
-          <div className="nb-prose"><ReactMarkdown>{m.content}</ReactMarkdown></div>
+      <div className={isUser ? "max-w-[460px]" : "max-w-[560px]"}>
+        <div
+          className={`text-sm leading-relaxed ${
+            isUser
+              ? "bg-gray-700 text-white rounded-[18px_18px_5px_18px] px-4 py-2.5"
+              : "bg-white text-gray-900 border border-gray-200 shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-[5px_18px_18px_18px] px-4 py-[11px]"
+          }`}
+        >
+          <div className="prose-sm prose-p:mb-[0.45em] prose-p:last:mb-0 prose-ul:pl-5 prose-ul:mb-[0.45em] prose-li:mb-[0.2em] prose-strong:font-semibold prose-headings:font-semibold prose-code:bg-gray-100 prose-code:px-1 prose-code:rounded prose-code:text-[0.84em] prose-pre:bg-gray-100 prose-pre:p-3 prose-pre:rounded-lg prose-pre:overflow-x-auto prose-pre:text-[0.82em] prose-pre:mb-[0.45em] prose-a:text-gray-400 prose-a:no-underline hover:prose-a:underline">
+            <ReactMarkdown>{m.content}</ReactMarkdown>
+          </div>
           {m.streaming && (
-            <span style={{ display: "inline-block", width: 2, height: 14, background: isUser ? "#fff" : C.textSub, marginLeft: 2, animation: "blink .8s step-end infinite", verticalAlign: "text-bottom" }} />
+            <span className="inline-block w-0.5 h-3.5 bg-current ml-0.5 align-text-bottom animate-[blink_.8s_step-end_infinite]" />
           )}
         </div>
         {!isUser && !m.streaming && (
-          <div style={{ display: "flex", alignItems: "center", gap: 3, marginTop: 5, paddingLeft: 2 }}>
+          <div className="flex items-center gap-1 mt-1.5 pl-0.5">
             <Chip onClick={() => {}}>✎ Save to notes</Chip>
             <IconBtn size={28} title="Copy">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+              </svg>
             </IconBtn>
             <IconBtn size={28} title="Good">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"/><path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"/>
+                <path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/>
+              </svg>
             </IconBtn>
             <IconBtn size={28} title="Bad">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z"/>
+                <path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/>
+              </svg>
             </IconBtn>
           </div>
         )}
@@ -216,24 +198,36 @@ function ChatMessage({ message: m }) {
 // ─── THINKING BUBBLE ─────────────────────────────────────────────────────────
 function ThinkingBubble({ pipeline }) {
   return (
-    <div style={{ display: "flex", gap: 10, alignItems: "flex-start", animation: "fadeIn .2s ease" }}>
-      <div style={{ width: 30, height: 30, borderRadius: "50%", flexShrink: 0, marginTop: 2, background: "#E5E7EB", border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Brain size={13} color={C.textSub} strokeWidth={1.8} />
+    <div className="flex gap-2.5 items-start animate-[fadeIn_.2s_ease]">
+      <div className="w-[30px] h-[30px] rounded-full shrink-0 mt-0.5 bg-gray-200 border border-gray-200 flex items-center justify-center">
+        <Brain size={13} className="text-gray-500" strokeWidth={1.8} />
       </div>
-      <div style={{ borderRadius: "5px 18px 18px 18px", padding: "11px 16px", background: C.surface, border: `1px solid ${C.border}`, boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}>
+      <div className="bg-white border border-gray-200 shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-[5px_18px_18px_18px] px-4 py-[11px]">
         {pipeline?.length ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          <div className="flex flex-col gap-1">
             {pipeline.map((s, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: i === pipeline.length - 1 ? C.accent : "#D1D5DB", flexShrink: 0, animation: i === pipeline.length - 1 ? "pulse 1s ease infinite" : "none" }} />
-                <span style={{ color: i === pipeline.length - 1 ? C.text : C.textMuted, fontFamily: "monospace" }}>{s}</span>
+              <div key={i} className="flex items-center gap-2 text-xs">
+                <div
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    i === pipeline.length - 1
+                      ? "bg-gray-700 animate-[pulse_1s_ease_infinite]"
+                      : "bg-gray-300"
+                  }`}
+                />
+                <span className={`font-mono ${i === pipeline.length - 1 ? "text-gray-900" : "text-gray-400"}`}>
+                  {s}
+                </span>
               </div>
             ))}
           </div>
         ) : (
-          <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-            {[0, 1, 2].map(i => (
-              <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: "#9CA3AF", animation: "dot 1.4s ease infinite", animationDelay: `${i * 0.2}s` }} />
+          <div className="flex gap-1 items-center">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-[7px] h-[7px] rounded-full bg-gray-400 animate-[dot_1.4s_ease_infinite]"
+                style={{ animationDelay: `${i * 0.2}s` }}
+              />
             ))}
           </div>
         )}
@@ -243,7 +237,7 @@ function ThinkingBubble({ pipeline }) {
 }
 
 // ─── NOTEBOOK VIEW ────────────────────────────────────────────────────────────
-export function Notebook({ notebook, onBack, serverStatus }) {
+export function NotebookView({ notebook, onBack, serverStatus }) {
   const [papers,      setPapers]      = useState([]);
   const [messages,    setMessages]    = useState([]);
   const [input,       setInput]       = useState("");
@@ -284,212 +278,341 @@ export function Notebook({ notebook, onBack, serverStatus }) {
   }, [messages.length]);
 
   const ingest = useCallback(async (files) => {
-    if (serverStatus !== "ok") { setMessages(m => [...m, { role: "assistant", content: "⚠ Backend not running." }]); return; }
+    if (serverStatus !== "ok") {
+      setMessages((m) => [...m, { role: "assistant", content: "⚠ Backend not running." }]);
+      return;
+    }
     const MAX = 5 * 1024 * 1024;
-    const oversized = files.filter(f => f.size > MAX);
-    const allowed   = files.filter(f => f.size <= MAX);
-    if (oversized.length) setMessages(m => [...m, { role: "assistant", content: `⚠ Skipped (>5 MB): ${oversized.map(f => f.name).join(", ")}.` }]);
+    const oversized = files.filter((f) => f.size > MAX);
+    const allowed   = files.filter((f) => f.size <= MAX);
+    if (oversized.length)
+      setMessages((m) => [...m, { role: "assistant", content: `⚠ Skipped (>5 MB): ${oversized.map((f) => f.name).join(", ")}.` }]);
     if (!allowed.length) return;
     setIngesting(true);
     try {
       const { results } = await uploadFiles(notebook.id, allowed);
-      const ok   = results.filter(r => r.status === "ok");
-      const fail = results.filter(r => r.status !== "ok");
+      const ok   = results.filter((r) => r.status === "ok");
+      const fail = results.filter((r) => r.status !== "ok");
       setPapers(await listFiles(notebook.id));
       const parts = [];
-      if (ok.length)   parts.push(`✓ Ingested ${ok.map(r => `"${r.name}"`).join(", ")}.`);
-      if (fail.length) parts.push(`✗ Failed: ${fail.map(r => r.name).join(", ")}.`);
-      setMessages(m => [...m, { role: "assistant", content: parts.join(" ") }]);
+      if (ok.length)   parts.push(`✓ Ingested ${ok.map((r) => `"${r.name}"`).join(", ")}.`);
+      if (fail.length) parts.push(`✗ Failed: ${fail.map((r) => r.name).join(", ")}.`);
+      setMessages((m) => [...m, { role: "assistant", content: parts.join(" ") }]);
     } catch (err) {
-      setMessages(m => [...m, { role: "assistant", content: `Upload error: ${err.message}` }]);
-    } finally { setIngesting(false); }
+      setMessages((m) => [...m, { role: "assistant", content: `Upload error: ${err.message}` }]);
+    } finally {
+      setIngesting(false);
+    }
   }, [serverStatus, notebook.id]);
 
   const removePaper = useCallback(async (fileId) => {
-    setPapers(p => p.filter(x => x.id !== fileId));
+    setPapers((p) => p.filter((x) => x.id !== fileId));
     try { await deleteFile(notebook.id, fileId); }
     catch (err) { setPapers(await listFiles(notebook.id)); alert(`Delete failed: ${err.message}`); }
   }, [notebook.id]);
 
   const downloadPaper = useCallback(async (fileId) => {
-    try { const { url, name } = await getFileDownloadUrl(notebook.id, fileId); Object.assign(document.createElement("a"), { href: url, download: name }).click(); }
-    catch (err) { alert(`Download failed: ${err.message}`); }
+    try {
+      const { url, name } = await getFileDownloadUrl(notebook.id, fileId);
+      Object.assign(document.createElement("a"), { href: url, download: name }).click();
+    } catch (err) { alert(`Download failed: ${err.message}`); }
   }, [notebook.id]);
 
   const handleClearHistory = useCallback(async () => {
     if (!window.confirm("Clear all chat history?")) return;
-    try { await clearMessages(notebook.id); setMessages([{ role: "assistant", content: "Chat history cleared." }]); }
-    catch (err) { alert(`Clear failed: ${err.message}`); }
+    try {
+      await clearMessages(notebook.id);
+      setMessages([{ role: "assistant", content: "Chat history cleared." }]);
+    } catch (err) { alert(`Clear failed: ${err.message}`); }
   }, [notebook.id]);
 
   const query = useCallback(async (q) => {
     if (!q.trim()) return;
-    setInput(""); setMessages(m => [...m, { role: "user", content: q }]); setLoading(true); setSources([]);
-    if (serverStatus !== "ok") { setMessages(m => [...m, { role: "assistant", content: "⚠ Backend not running." }]); setLoading(false); return; }
+    setInput("");
+    setMessages((m) => [...m, { role: "user", content: q }]);
+    setLoading(true);
+    setSources([]);
+    if (serverStatus !== "ok") {
+      setMessages((m) => [...m, { role: "assistant", content: "⚠ Backend not running." }]);
+      setLoading(false);
+      return;
+    }
     setPipeline([]);
     try {
       const resp = await queryNotebook(notebook.id, q);
       let fullText = ""; let msgAdded = false;
       for await (const event of readSSE(resp)) {
-        if (event.type === "status")  setPipeline(p => [...(p || []), event.text]);
+        if (event.type === "status")  setPipeline((p) => [...(p || []), event.text]);
         if (event.type === "sources") setSources(uniqueStrings(event.sources || []));
         if (event.type === "token") {
           fullText += event.token;
-          if (!msgAdded) { setMessages(m => [...m, { role: "assistant", content: fullText, streaming: true }]); msgAdded = true; }
-          else setMessages(m => m.map((msg, i) => i === m.length - 1 ? { ...msg, content: fullText } : msg));
+          if (!msgAdded) { setMessages((m) => [...m, { role: "assistant", content: fullText, streaming: true }]); msgAdded = true; }
+          else setMessages((m) => m.map((msg, i) => i === m.length - 1 ? { ...msg, content: fullText } : msg));
         }
-        if (event.type === "done")  setMessages(m => m.map((msg, i) => i === m.length - 1 ? { ...msg, content: event.fullText || fullText, streaming: false } : msg));
-        if (event.type === "error") setMessages(m => [...m, { role: "assistant", content: `Error: ${event.error}` }]);
+        if (event.type === "done")  setMessages((m) => m.map((msg, i) => i === m.length - 1 ? { ...msg, content: event.fullText || fullText, streaming: false } : msg));
+        if (event.type === "error") setMessages((m) => [...m, { role: "assistant", content: `Error: ${event.error}` }]);
       }
     } catch (err) {
-      setMessages(m => [...m, { role: "assistant", content: `Connection error: ${err.message}` }]);
+      setMessages((m) => [...m, { role: "assistant", content: `Connection error: ${err.message}` }]);
     } finally { setLoading(false); setPipeline(null); }
   }, [serverStatus, notebook.id]);
 
   return (
-    <>
-      <GlobalStyle />
-      <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", background: C.bg, fontFamily: "system-ui,-apple-system,sans-serif" }}>
-        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+    <div className="flex flex-col w-full h-full bg-gray-100 font-sans">
+      {/* Custom keyframes — kept minimal since Tailwind doesn't ship these by default */}
+      <style>{`
+        @keyframes blink  { 0%,100%{opacity:1;}50%{opacity:0;} }
+        @keyframes dot    { 0%,80%,100%{transform:scale(0.6);opacity:0.4;}40%{transform:scale(1);opacity:1;} }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);} }
+      `}</style>
 
-          {/* ── LEFT: Sources ──────────────────────────────────────────── */}
-          {leftOpen ? (
-            <aside style={{ width: 300, flexShrink: 0, display: "flex", flexDirection: "column", background: C.surface, borderRight: `1px solid ${C.border}`, overflow: "hidden" }}>
-              <div style={{ height: 52, padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Sources</span>
-                <IconBtn onClick={() => setLeftOpen(false)} title="Collapse"><PanelLeftClose size={15} /></IconBtn>
-              </div>
+      <div className="flex-1 flex overflow-hidden">
 
-              <div style={{ padding: "12px 14px 8px", flexShrink: 0 }}>
-                <GhostBtn onClick={() => fileRef.current.click()} fullWidth>
-                  {ingesting ? <Loader2 size={13} style={{ animation: "spin .7s linear infinite" }} /> : <Plus size={13} />}
-                  {ingesting ? "Processing…" : "Add sources"}
-                </GhostBtn>
-              </div>
+        {/* ── LEFT: Sources ──────────────────────────────────────────── */}
+        {leftOpen ? (
+          <aside className="w-[300px] shrink-0 flex flex-col bg-white border-r border-gray-200 overflow-hidden">
+            {/* Header */}
+            <div className="h-[52px] px-4 flex items-center justify-between border-b border-gray-200 shrink-0">
+              <span className="text-[13px] font-semibold text-gray-900">Sources</span>
+              <IconBtn onClick={() => setLeftOpen(false)} title="Collapse">
+                <PanelLeftClose size={15} />
+              </IconBtn>
+            </div>
 
-              {/* web search bar */}
-              <div style={{ padding: "0 14px 10px", flexShrink: 0 }}>
-                <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, background: C.bg, overflow: "hidden" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 11px" }}>
-                    <Search size={13} color={C.textMuted} />
-                    <input readOnly placeholder="Search the web for sources" style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 12, color: C.textMuted }} />
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 9px", borderTop: `1px solid ${C.borderSoft}` }}>
-                    {["web", "ai"].map(mode => (
-                      <button key={mode} onClick={() => setWebMode(mode)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 9px", borderRadius: 12, border: "none", background: webMode === mode ? "#E5E7EB" : "transparent", color: webMode === mode ? C.text : C.textMuted, cursor: "pointer", fontSize: 11, fontWeight: 500 }}>
-                        {mode === "web" ? <><Globe size={10} /> Web</> : <Sparkles size={10} />} <ChevronDown size={9} />
-                      </button>
-                    ))}
-                    <div style={{ flex: 1 }} />
-                    <button style={{ width: 22, height: 22, borderRadius: "50%", background: "#E5E7EB", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <ArrowLeft size={11} color={C.textSub} style={{ transform: "rotate(180deg)" }} />
+            {/* Add sources button */}
+            <div className="px-3.5 pt-3 pb-2 shrink-0">
+              <GhostBtn onClick={() => fileRef.current.click()} fullWidth>
+                {ingesting
+                  ? <Loader2 size={13} className="animate-spin" />
+                  : <Plus size={13} />}
+                {ingesting ? "Processing…" : "Add sources"}
+              </GhostBtn>
+            </div>
+
+            {/* Web search bar */}
+            <div className="px-3.5 pb-2.5 shrink-0">
+              <div className="border border-gray-200 rounded-xl bg-gray-100 overflow-hidden">
+                <div className="flex items-center gap-2 px-3 py-[7px]">
+                  <Search size={13} className="text-gray-400" />
+                  <input
+                    readOnly
+                    placeholder="Search the web for sources"
+                    className="flex-1 border-none outline-none bg-transparent text-xs text-gray-400"
+                  />
+                </div>
+                <div className="flex items-center gap-1 px-2 py-[5px] border-t border-gray-100">
+                  {["web", "ai"].map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => setWebMode(mode)}
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded-xl border-none text-[11px] font-medium cursor-pointer ${
+                        webMode === mode ? "bg-gray-200 text-gray-900" : "bg-transparent text-gray-400"
+                      }`}
+                    >
+                      {mode === "web" ? <><Globe size={10} /> Web</> : <Sparkles size={10} />}
+                      <ChevronDown size={9} />
                     </button>
-                  </div>
+                  ))}
+                  <div className="flex-1" />
+                  <button className="w-[22px] h-[22px] rounded-full bg-gray-200 border-none cursor-pointer flex items-center justify-center">
+                    <ArrowLeft size={11} className="text-gray-500 rotate-180" />
+                  </button>
                 </div>
               </div>
+            </div>
 
-              {/* select all */}
-              <div style={{ padding: "0 14px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-                <span style={{ fontSize: 12, color: C.textSub }}>Select all sources</span>
-                <div onClick={() => setAllSelected(a => !a)} style={{ width: 18, height: 18, borderRadius: 4, background: allSelected ? C.accent : "transparent", border: allSelected ? "none" : `2px solid ${C.textMuted}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                  {allSelected && <Check size={11} color="white" strokeWidth={3} />}
-                </div>
+            {/* Select all */}
+            <div className="px-3.5 pb-2 flex items-center justify-between shrink-0">
+              <span className="text-xs text-gray-500">Select all sources</span>
+              <div
+                onClick={() => setAllSelected((a) => !a)}
+                className={`w-[18px] h-[18px] rounded cursor-pointer flex items-center justify-center ${
+                  allSelected ? "bg-gray-700" : "border-2 border-gray-400 bg-transparent"
+                }`}
+              >
+                {allSelected && <Check size={11} color="white" strokeWidth={3} />}
               </div>
+            </div>
 
-              {dragOver && (
-                <div style={{ margin: "0 14px 8px", borderRadius: 8, border: `1.5px dashed ${C.textSub}`, background: "#F9FAFB", padding: 10, textAlign: "center", flexShrink: 0 }}>
-                  <p style={{ fontSize: 12, color: C.textSub }}>Drop files here</p>
+            {dragOver && (
+              <div className="mx-3.5 mb-2 rounded-lg border-[1.5px] border-dashed border-gray-500 bg-gray-50 p-2.5 text-center shrink-0">
+                <p className="text-xs text-gray-500">Drop files here</p>
+              </div>
+            )}
+
+            {/* Drop zone overlay */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); ingest([...e.dataTransfer.files]); }}
+              className={`absolute inset-0 ${dragOver ? "z-[5]" : "-z-[1]"}`}
+            />
+
+            {/* Source list */}
+            <div className="flex-1 overflow-y-auto px-1.5 pb-2">
+              {loadingData ? (
+                <div className="flex justify-center pt-6">
+                  <Loader2 size={17} className="text-gray-400 animate-spin" />
                 </div>
+              ) : papers.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center mt-6">
+                  No sources yet — add a PDF or text file
+                </p>
+              ) : (
+                papers.map((p) => (
+                  <SourceRow
+                    key={p.id}
+                    paper={p}
+                    onDownload={() => downloadPaper(p.id)}
+                    onRemove={() => removePaper(p.id)}
+                  />
+                ))
               )}
-              <div onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={e => { e.preventDefault(); setDragOver(false); ingest([...e.dataTransfer.files]); }} style={{ position: "absolute", inset: 0, zIndex: dragOver ? 5 : -1 }} />
+            </div>
 
-              <div style={{ flex: 1, overflowY: "auto", padding: "0 6px 8px" }}>
-                {loadingData ? (
-                  <div style={{ display: "flex", justifyContent: "center", padding: 24 }}><Loader2 size={17} color={C.textMuted} style={{ animation: "spin .8s linear infinite" }} /></div>
-                ) : papers.length === 0 ? (
-                  <p style={{ fontSize: 12, color: C.textMuted, textAlign: "center", marginTop: 24 }}>No sources yet — add a PDF or text file</p>
-                ) : papers.map(p => (
-                  <SourceRow key={p.id} paper={p} onDownload={() => downloadPaper(p.id)} onRemove={() => removePaper(p.id)} />
+            {/* Cited sources */}
+            {sources.length > 0 && (
+              <div className="mx-2.5 mb-2.5 p-2.5 rounded-[9px] bg-gray-100 shrink-0">
+                <p className="text-[10px] text-gray-500 tracking-widest font-bold mb-1 uppercase">
+                  Cited in last answer
+                </p>
+                {sources.map((s) => (
+                  <p key={s} className="text-[11px] text-gray-500 py-px">• {s}</p>
                 ))}
               </div>
+            )}
+          </aside>
+        ) : (
+          <CollapseStrip onClick={() => setLeftOpen(true)} title="Show sources" side="left" />
+        )}
 
-              {sources.length > 0 && (
-                <div style={{ margin: "0 10px 10px", padding: "9px 11px", borderRadius: 9, background: "#F3F4F6", flexShrink: 0 }}>
-                  <p style={{ fontSize: 10, color: C.textSub, letterSpacing: ".07em", fontWeight: 700, marginBottom: 5, textTransform: "uppercase" }}>Cited in last answer</p>
-                  {sources.map(s => <p key={s} style={{ fontSize: 11, color: C.textSub, padding: "1px 0" }}>• {s}</p>)}
-                </div>
+        {/* ── CENTER: Chat ───────────────────────────────────────────── */}
+        <main className="flex-1 flex flex-col overflow-hidden bg-gray-100 border-r border-gray-200 min-w-0">
+          {/* Chat header */}
+          <div className="h-[52px] px-4 flex items-center justify-between bg-white border-b border-gray-200 shrink-0">
+            <span className="text-[13px] font-semibold text-gray-900">Chat</span>
+            <div className="flex gap-0.5">
+              <IconBtn><SlidersHorizontal size={15} /></IconBtn>
+              <IconBtn onClick={handleClearHistory} title="Clear history">
+                <MessageSquareX size={15} />
+              </IconBtn>
+              <IconBtn><MoreVertical size={15} /></IconBtn>
+            </div>
+          </div>
+        
+
+          {/* Messages */}
+          <div
+            ref={chatRef}
+            className="flex-1 overflow-y-auto px-3.5 py-5 flex flex-col gap-5"
+          >
+            {loadingData ? (
+              <div className="flex justify-center mt-16">
+                <Loader2 size={20} className="text-gray-400 animate-spin" />
+              </div>
+            ) : (
+              messages.map((m, i) => <ChatMessage key={m.id || i} message={m} />)
+            )}
+            {loading && !messages[messages.length - 1]?.streaming && (
+              <ThinkingBubble pipeline={pipeline} />
+            )}
+          </div>
+
+          {/* Input bar */}
+          <div className="p-2.5 bg-gray-100 shrink-0">
+            <div className="flex items-center gap-2.5 bg-white border border-gray-200 rounded-[26px] py-[9px] pl-4 pr-[9px] shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+              <input
+                className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder:text-gray-400"
+                placeholder={papers.length ? "Start typing..." : "Upload sources first, then ask questions..."}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && query(input)}
+              />
+              {papers.length > 0 && (
+                <span className="text-[11px] text-gray-500 bg-gray-100 rounded-xl px-2.5 py-0.5 whitespace-nowrap border border-gray-200">
+                  {papers.length} source{papers.length !== 1 ? "s" : ""}
+                </span>
               )}
-            </aside>
-          ) : <CollapseStrip onClick={() => setLeftOpen(true)} title="Show sources" side="left" />}
-
-          {/* ── CENTER: Chat ───────────────────────────────────────────── */}
-          <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: C.bg, borderRight: `1px solid ${C.border}`, minWidth: 0 }}>
-            <div style={{ height: 52, padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: C.surface, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Chat</span>
-              <div style={{ display: "flex", gap: 2 }}>
-                <IconBtn><SlidersHorizontal size={15} /></IconBtn>
-                <IconBtn onClick={handleClearHistory} title="Clear history"><MessageSquareX size={15} /></IconBtn>
-                <IconBtn><MoreVertical size={15} /></IconBtn>
-              </div>
+              <button
+                onClick={() => query(input)}
+                disabled={loading || !input.trim()}
+                className={`w-[34px] h-[34px] rounded-full flex items-center justify-center border-none shrink-0 transition-colors duration-150 ${
+                  loading || !input.trim()
+                    ? "bg-gray-200 cursor-default"
+                    : "bg-gray-700 cursor-pointer"
+                }`}
+              >
+                {loading
+                  ? <Loader2 size={14} className="text-gray-400 animate-spin" />
+                  : <Send size={14} color={!input.trim() ? "#9CA3AF" : "#fff"} />}
+              </button>
             </div>
+            <p className="text-center text-[11px] text-gray-400 mt-1.5">
+              Responses may be inaccurate — please verify against your sources.
+            </p>
+          </div>
+        </main>
 
-            <div style={{ padding: "8px 14px", display: "flex", gap: 6, flexWrap: "wrap", background: C.surface, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-              {PRESETS.map(({ Icon: PI, label, prompt }) => (
-                <Chip key={label} onClick={() => query(prompt)}><PI size={11} color={C.textMuted} /> {label}</Chip>
-              ))}
+        {/* ── RIGHT: Studio ──────────────────────────────────────────── */}
+        {rightOpen ? (
+          <aside className="w-[300px] shrink-0 flex flex-col bg-white overflow-hidden">
+            <div className="h-[52px] px-4 flex items-center justify-between border-b border-gray-200 shrink-0">
+              <span className="text-[13px] font-semibold text-gray-900">Studio</span>
+              <IconBtn onClick={() => setRightOpen(false)} title="Collapse">
+                <PanelRightClose size={15} />
+              </IconBtn>
             </div>
+            <div className="flex-1 overflow-y-auto px-2.5 pt-3 pb-2">
+              <div className="grid grid-cols-1 gap-[7px] mb-4">
+                {STUDIO_CARDS.map((c) => <StudioCard key={c.label} {...c} />)}
+              </div>
+              {/* Preset chips */}
+              <div className=" border-gray-200 border-t py-3 bg-white shrink-0">
+                <span className="text-xs text-gray-500 pl-1 block mb-2">
+                  Prompts 
+                </span>
 
-            <div ref={chatRef} style={{ flex: 1, overflowY: "auto", padding: "20px 14px", display: "flex", flexDirection: "column", gap: 20 }}>
-              {loadingData ? (
-                <div style={{ display: "flex", justifyContent: "center", marginTop: 60 }}><Loader2 size={20} color={C.textMuted} style={{ animation: "spin .8s linear infinite" }} /></div>
-              ) : messages.map((m, i) => <ChatMessage key={m.id || i} message={m} />)}
-              {loading && !messages[messages.length - 1]?.streaming && <ThinkingBubble pipeline={pipeline} />}
+                {PRESETS.map(({ Icon, label, prompt }, i) => (
+                  <button
+                    key={i}
+                    onClick={() => query(prompt)}
+                    className="w-full flex items-center justify-between px-2 py-2 rounded-md hover:bg-gray-50 transition"
+                  >
+                    {/* Left side */}
+                    <div className="flex items-center gap-2">
+                      <Icon size={14} className="text-gray-400" />
+                      <span className="text-sm text-gray-700">{label}</span>
+                    </div>
+                  </button>
+                ))}
+                {/* Add sources button */}
+              <div className="px-4 pt-3 pb-2 shrink-0">
+                <GhostBtn fullWidth>
+                  <Plus size={13} />
+                  Add prompts 
+                </GhostBtn>
+              </div>
+              </div>
+              
             </div>
+          </aside>
+        ) : (
+          <CollapseStrip onClick={() => setRightOpen(true)} title="Show studio" side="right" />
+        )}
 
-            <div style={{ padding: "10px", background: C.bg, flexShrink: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 26, padding: "9px 9px 9px 18px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-                <input style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, color: C.text }} placeholder={papers.length ? "Start typing..." : "Upload sources first, then ask questions..."}
-                  value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !e.shiftKey && query(input)} />
-                {papers.length > 0 && (
-                  <span style={{ fontSize: 11, color: C.textSub, background: C.bg, borderRadius: 10, padding: "2px 9px", whiteSpace: "nowrap", border: `1px solid ${C.border}` }}>
-                    {papers.length} source{papers.length !== 1 ? "s" : ""}
-                  </span>
-                )}
-                <button onClick={() => query(input)} disabled={loading || !input.trim()}
-                  style={{ width: 34, height: 34, borderRadius: 17, display: "flex", alignItems: "center", justifyContent: "center", background: loading || !input.trim() ? "#E5E7EB" : C.accent, border: "none", cursor: loading || !input.trim() ? "default" : "pointer", flexShrink: 0, transition: "background .15s" }}>
-                  {loading ? <Loader2 size={14} color={C.textMuted} style={{ animation: "spin .7s linear infinite" }} /> : <Send size={14} color={!input.trim() ? C.textMuted : "#fff"} />}
-                </button>
-              </div>
-              <p style={{ textAlign: "center", fontSize: 11, color: C.textMuted, marginTop: 7 }}>Responses may be inaccurate — please verify against your sources.</p>
-            </div>
-          </main>
-
-          {/* ── RIGHT: Studio ──────────────────────────────────────────── */}
-          {rightOpen ? (
-            <aside style={{ width: 300, flexShrink: 0, display: "flex", flexDirection: "column", background: C.surface, overflow: "hidden" }}>
-              <div style={{ height: 52, padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Studio</span>
-                <IconBtn onClick={() => setRightOpen(false)} title="Collapse"><PanelRightClose size={15} /></IconBtn>
-              </div>
-              <div style={{ flex: 1, overflowY: "auto", padding: "12px 10px 8px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginBottom: 16 }}>
-                  {STUDIO_CARDS.map(c => <StudioCard key={c.label} {...c} />)}
-                </div>
-                <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
-                  <span style={{ fontSize: 12, color: C.textSub, paddingLeft: 4, display: "block", marginBottom: 8 }}>Saved notes</span>
-                  {[{ label: "Tree Quiz", icon: FileQuestion, time: "20d ago" }, { label: "Tree Quiz", icon: FileQuestion, time: "20d ago" }].map((n, i) => <NoteRow key={i} note={n} />)}
-                  <GhostBtn onClick={() => {}} fullWidth><Plus size={13} /> Add note</GhostBtn>
-                </div>
-              </div>
-            </aside>
-          ) : <CollapseStrip onClick={() => setRightOpen(true)} title="Show studio" side="right" />}
-
-        </div>
       </div>
-      <input ref={fileRef} type="file" multiple accept=".pdf,.txt,.md" style={{ display: "none" }} onChange={e => ingest([...e.target.files])} />
-    </>
+
+      <input
+        ref={fileRef}
+        type="file"
+        multiple
+        accept=".pdf,.txt,.md"
+        className="hidden"
+        onChange={(e) => ingest([...e.target.files])}
+      />
+    </div>
   );
 }
 
 export function DropZone() { return null; }
-export default Notebook;
+export default NotebookView;
