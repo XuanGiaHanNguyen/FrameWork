@@ -3,14 +3,8 @@ import DynamicTable from "./table";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "../ui/card";
+import { Tabs, TabsContent } from "../ui/tabs";
+import { Card, CardContent } from "../ui/card";
 import { AlertCircle } from "lucide-react";
 
 const SAMPLE_DATA = [
@@ -61,7 +55,7 @@ export default function DemoPage({ theme: t = {} }) {
   const [jsonInput, setJsonInput] = useState("");
   const [tableData, setTableData] = useState(SAMPLE_DATA);
   const [error, setError] = useState("");
-  const [useCustomColumns, setUseCustomColumns] = useState(true);
+  const useCustomColumns = true;
 
   const handleLoadJson = () => {
     try {
@@ -84,93 +78,42 @@ export default function DemoPage({ theme: t = {} }) {
 
   return (
     <div
+      className="flex-1 overflow-auto bg-[var(--bg)] p-7"
       style={{
-        flex: 1,
-        padding: 28,
-        overflow: "auto",
-        background: t.bg,
+        "--bg": t.bg,
+        "--surface": t.surface,
+        "--surface-2": t.surface2,
+        "--border": t.border,
+        "--text": t.text,
+        "--text-muted": t.textMuted,
+        "--shadow": t.shadow,
+        "--err": t.errColor,
       }}
     >
-      <div
-        style={{
-          maxWidth: 1200,
-          margin: "0 auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: 24,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: 16,
-          }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <p
-              style={{
-                margin: 0,
-                fontSize: 24,
-                fontWeight: 700,
-                color: t.text,
-              }}
-            >
-              Automate
+      <div className="mx-auto flex max-w-[1200px] flex-col gap-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="m-0 text-2xl font-bold text-[var(--text)]">
+              Notebooks
             </p>
-            <p
-              style={{
-                margin: "6px 0 0",
-                maxWidth: 660,
-                color: t.textMuted,
-                fontSize: 14,
-                lineHeight: 1.7,
-              }}
-            >
-              A dynamic data table for your automate workspace.
+            <p className="mt-1 text-sm text-[var(--text-muted)]">
+              Search or create a notebook for your research.
             </p>
           </div>
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          <div className="flex flex-row gap-2">
             <Button
-              size="sm"
-              variant={useCustomColumns ? "default" : "outline"}
-              onClick={() => setUseCustomColumns(true)}
-              style={{ minWidth: 130 }}
+              className="rounded-[10px] bg-[var(--text)] text-[var(--bg)] px-4 py-2 text-sm font-semibold"
+              onClick={() => {}}
             >
-              Create New
-            </Button>
-            <Button
-              size="sm"
-              variant={!useCustomColumns ? "default" : "outline"}
-              onClick={() => setUseCustomColumns(false)}
-              style={{ minWidth: 130 }}
-            >
-              Edit Existing
+              New notebook
             </Button>
           </div>
         </div>
 
-        <Card
-          style={{
-            border: `1px solid ${t.border}`,
-            background: t.surface,
-            boxShadow: t.shadow,
-          }}
-        >
-
-          <CardContent
-            style={{
-              padding: "22px 24px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 20,
-            }}
-          >
+        <Card className="!bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--shadow)]">
+          <CardContent className="flex flex-col gap-5 p-6">
             <Tabs defaultValue="table">
-
               <TabsContent value="table">
                 <DynamicTable
                   theme={t}
@@ -181,58 +124,6 @@ export default function DemoPage({ theme: t = {} }) {
                   filterable
                   groupable
                 />
-              </TabsContent>
-
-              <TabsContent value="data">
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 14,
-                  }}
-                >
-                  <Label
-                    htmlFor="json-input"
-                    style={{ color: t.textMuted, fontSize: 13 }}
-                  >
-                    Paste a JSON array of objects
-                  </Label>
-                  <Textarea
-                    id="json-input"
-                    style={{
-                      minHeight: 220,
-                      fontFamily: "DM Mono, monospace",
-                      color: t.text,
-                      background: t.surface2,
-                      border: `1px solid ${t.border}`,
-                    }}
-                    placeholder='[{"id": 1, "name": "Alice", "age": 30}]'
-                    value={jsonInput}
-                    onChange={(e) => setJsonInput(e.target.value)}
-                  />
-
-                  {error && (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        color: t.errColor,
-                        fontSize: 13,
-                      }}
-                    >
-                      <AlertCircle size={16} />
-                      <span>{error}</span>
-                    </div>
-                  )}
-
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <Button onClick={handleLoadJson}>Load JSON</Button>
-                    <Button variant="outline" onClick={handleReset}>
-                      Reset to sample
-                    </Button>
-                  </div>
-                </div>
               </TabsContent>
             </Tabs>
           </CardContent>

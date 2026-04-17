@@ -336,7 +336,7 @@ export default function DynamicTable({
   const [groupBy, setGroupBy] = useState(null);
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(pageSize);
+  const [perPage] = useState(pageSize);
 
   // Auto-detect columns if not provided
   const cols = useMemo(() => {
@@ -424,40 +424,23 @@ export default function DynamicTable({
   }, [sorted, groupBy]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div
+      className="flex flex-col gap-4"
+      style={{
+        "--border": t.border,
+        "--surface": t.surface,
+        "--surface-2": t.surface2,
+        "--text": t.text,
+        "--text-muted": t.textMuted,
+      }}
+    >
       {/* Toolbar */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          gap: 10,
-        }}
-      >
+      <div className="flex flex-wrap items-center gap-2.5">
         {searchable && (
-          <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
-            <Search
-              style={{
-                position: "absolute",
-                left: 12,
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: 16,
-                height: 16,
-                color: t.textMuted,
-                pointerEvents: "none",
-              }}
-            />
+          <div className="relative min-w-[180px] flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] pointer-events-none" />
             <Input
-              style={{
-                width: "100%",
-                paddingLeft: 36,
-                height: 36,
-                border: `1px solid ${t.border}`,
-                borderRadius: 12,
-                background: t.surface2,
-                color: t.text,
-              }}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-9 h-9 text-[var(--text)]"
               placeholder="Search…"
               value={search}
               onChange={(e) => {
@@ -484,40 +467,24 @@ export default function DynamicTable({
             onChange={setGroupBy}
           />
         )}
-
       </div>
 
       {/* Active filter tags */}
       {filters.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <div className="flex flex-wrap gap-2">
           {filters.map((f, i) => (
             <span
               key={i}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "6px 12px",
-                borderRadius: 999,
-                background: t.surface2,
-                color: t.text,
-                fontSize: 12,
-              }}
+              className="inline-flex items-center gap-2 rounded-full bg-[var(--surface-2)] px-3 py-1.5 text-[var(--text)] text-xs"
             >
-              <span style={{ fontWeight: 600 }}>{f.field}</span>
-              <span style={{ color: t.textMuted }}>{f.op}</span>
-              <span style={{ fontWeight: 600 }}>&quot;{f.value}&quot;</span>
+              <span className="font-semibold">{f.field}</span>
+              <span className="text-[var(--text-muted)]">{f.op}</span>
+              <span className="font-semibold">&quot;{f.value}&quot;</span>
               <button
                 onClick={() => removeFilter(i)}
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  color: t.textMuted,
-                  cursor: "pointer",
-                  padding: 0,
-                }}
+                className="border-none bg-transparent text-[var(--text-muted)] cursor-pointer p-0"
               >
-                <X style={{ width: 12, height: 12 }} />
+                <X className="w-3 h-3" />
               </button>
             </span>
           ))}
@@ -525,34 +492,17 @@ export default function DynamicTable({
       )}
 
       {/* Table */}
-      <div
-        style={{
-          borderRadius: 18,
-          border: `1px solid ${t.border}`,
-          overflow: "hidden",
-          background: t.surface,
-        }}
-      >
+      <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)]">
         <Table>
           <TableHeader>
-            <TableRow style={{ background: t.surface2 }}>
+            <TableRow className="bg-[var(--surface-2)]">
               {cols.map((col) => (
                 <TableHead
                   key={col.key}
-                  style={{
-                    padding: "14px 16px",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: t.text,
-                    cursor: "pointer",
-                    userSelect: "none",
-                    whiteSpace: "nowrap",
-                  }}
+                  className="cursor-pointer select-none whitespace-nowrap px-4 py-3.5 text-xs font-semibold text-[var(--text)]"
                   onClick={() => handleSort(col.key)}
                 >
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 6 }}
-                  >
+                  <div className="flex items-center gap-1.5">
                     {col.label}
                     <SortIcon
                       direction={sort.key === col.key ? sort.dir : null}
@@ -573,41 +523,19 @@ export default function DynamicTable({
                     <TableRow
                       key={`group-${gk}`}
                       onClick={() => toggleGroup(gk)}
-                      style={{ cursor: "pointer", background: t.surface2 }}
+                      className="cursor-pointer bg-[var(--surface-2)]"
                     >
                       <TableCell
                         colSpan={cols.length}
-                        style={{
-                          padding: "12px 16px",
-                          fontSize: 13,
-                          color: t.text,
-                        }}
+                        className="px-4 py-3 text-sm text-[var(--text)]"
                       >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 10,
-                          }}
-                        >
+                        <div className="flex items-center gap-2.5">
                           {open ? (
-                            <ChevronDown
-                              style={{
-                                width: 14,
-                                height: 14,
-                                color: t.textMuted,
-                              }}
-                            />
+                            <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)]" />
                           ) : (
-                            <ChevronRight
-                              style={{
-                                width: 14,
-                                height: 14,
-                                color: t.textMuted,
-                              }}
-                            />
+                            <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)]" />
                           )}
-                          <span style={{ fontWeight: 600 }}>
+                          <span className="font-semibold">
                             {groupCol?.label}: {gk}
                           </span>
                           <Badge variant="secondary">{rows.length}</Badge>
@@ -620,11 +548,7 @@ export default function DynamicTable({
                           {cols.map((col) => (
                             <TableCell
                               key={col.key}
-                              style={{
-                                padding: "14px 16px",
-                                fontSize: 13,
-                                color: t.text,
-                              }}
+                              className="px-4 py-3 text-sm text-[var(--text)]"
                             >
                               {formatCell(col, row[col.key])}
                             </TableCell>
@@ -638,12 +562,7 @@ export default function DynamicTable({
               <TableRow>
                 <TableCell
                   colSpan={cols.length}
-                  style={{
-                    padding: "40px 16px",
-                    textAlign: "center",
-                    fontSize: 13,
-                    color: t.textMuted,
-                  }}
+                  className="px-4 py-10 text-center text-sm text-[var(--text-muted)]"
                 >
                   No results found
                 </TableCell>
@@ -654,11 +573,7 @@ export default function DynamicTable({
                   {cols.map((col) => (
                     <TableCell
                       key={col.key}
-                      style={{
-                        padding: "14px 16px",
-                        fontSize: 13,
-                        color: t.text,
-                      }}
+                      className="px-4 py-3 text-sm text-[var(--text)]"
                     >
                       {formatCell(col, row[col.key])}
                     </TableCell>
@@ -671,45 +586,31 @@ export default function DynamicTable({
       </div>
 
       {!groups && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 10,
-          }}
-        >
-          <p style={{ fontSize: 13, color: t.textMuted }}>
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <p className="text-sm text-[var(--text-muted)]">
             {sorted.length === 0
               ? "No results"
               : `${(safePage - 1) * perPage + 1}–${Math.min(safePage * perPage, sorted.length)} of ${sorted.length}`}
           </p>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="flex flex-wrap items-center gap-1.5">
             <Button
               variant="outline"
               size="icon"
-              style={{ minWidth: 32, minHeight: 32 }}
+              className="min-w-[32px] min-h-[32px]"
               disabled={safePage === 1}
               onClick={() => setPage(1)}
             >
-              <ChevronsLeft style={{ width: 14, height: 14 }} />
+              <ChevronsLeft className="w-3.5 h-3.5" />
             </Button>
             <Button
               variant="outline"
               size="icon"
-              style={{ minWidth: 32, minHeight: 32 }}
+              className="min-w-[32px] min-h-[32px]"
               disabled={safePage === 1}
               onClick={() => setPage((p) => p - 1)}
             >
-              <ChevronLeft style={{ width: 14, height: 14 }} />
+              <ChevronLeft className="w-3.5 h-3.5" />
             </Button>
 
             {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -719,7 +620,7 @@ export default function DynamicTable({
                   key={n}
                   variant={n === safePage ? "default" : "outline"}
                   size="icon"
-                  style={{ minWidth: 32, minHeight: 32, fontSize: 12 }}
+                  className="min-w-[32px] min-h-[32px] text-xs"
                   onClick={() => setPage(n)}
                 >
                   {n}
@@ -729,20 +630,20 @@ export default function DynamicTable({
             <Button
               variant="outline"
               size="icon"
-              style={{ minWidth: 32, minHeight: 32 }}
+              className="min-w-[32px] min-h-[32px]"
               disabled={safePage === totalPages}
               onClick={() => setPage((p) => p + 1)}
             >
-              <ChevronRight style={{ width: 14, height: 14 }} />
+              <ChevronRight className="w-3.5 h-3.5" />
             </Button>
             <Button
               variant="outline"
               size="icon"
-              style={{ minWidth: 32, minHeight: 32 }}
+              className="min-w-[32px] min-h-[32px]"
               disabled={safePage === totalPages}
               onClick={() => setPage(totalPages)}
             >
-              <ChevronsRight style={{ width: 14, height: 14 }} />
+              <ChevronsRight className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
