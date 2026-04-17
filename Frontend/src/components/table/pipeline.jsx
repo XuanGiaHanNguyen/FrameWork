@@ -1,11 +1,9 @@
 import { useState } from "react";
 import DynamicTable from "./table";
 import { Button } from "../ui/button";
-import { Textarea } from "../ui/textarea";
-import { Label } from "../ui/label";
 import { Tabs, TabsContent } from "../ui/tabs";
 import { Card, CardContent } from "../ui/card";
-import { AlertCircle } from "lucide-react";
+import { QuickstartModal } from "../modals/QuickStart";
 
 const SAMPLE_DATA = [
   {
@@ -43,38 +41,15 @@ const SAMPLE_DATA = [
 const CUSTOM_COLUMNS = [
   { key: "id", label: "ID", type: "number" },
   { key: "name", label: "Name", type: "string" },
-  { key: "email", label: "Email", type: "string" },
-  { key: "registered", label: "Registered", type: "date" },
+  { key: "registered", label: "Last Edited", type: "date" },
   { key: "active", label: "Status", type: "boolean" },
-  { key: "age", label: "Age", type: "number" },
   { key: "tags", label: "Tags", type: "array" },
-  { key: "visits", label: "Visits", type: "number" },
 ];
 
-export default function DemoPage({ theme: t = {} }) {
-  const [jsonInput, setJsonInput] = useState("");
-  const [tableData, setTableData] = useState(SAMPLE_DATA);
-  const [error, setError] = useState("");
+export default function DemoPage({ theme: t = {}, onStartBuilding }) {
+  const tableData = SAMPLE_DATA;
+  const [showQuickstart, setShowQuickstart] = useState(false);
   const useCustomColumns = true;
-
-  const handleLoadJson = () => {
-    try {
-      const parsed = JSON.parse(jsonInput);
-      if (!Array.isArray(parsed)) {
-        throw new Error("Data must be a JSON array of objects");
-      }
-      setTableData(parsed);
-      setError("");
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const handleReset = () => {
-    setTableData(SAMPLE_DATA);
-    setJsonInput("");
-    setError("");
-  };
 
   return (
     <div
@@ -94,22 +69,30 @@ export default function DemoPage({ theme: t = {} }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="m-0 text-2xl font-bold text-[var(--text)]">
-              Notebooks
+              Automation
             </p>
             <p className="mt-1 text-sm text-[var(--text-muted)]">
-              Search or create a notebook for your research.
+              Create your own AI prompt/pipeline.
             </p>
           </div>
 
           <div className="flex flex-row gap-2">
             <Button
               className="rounded-[10px] bg-[var(--text)] text-[var(--bg)] px-4 py-2 text-sm font-semibold"
-              onClick={() => {}}
+              onClick={() => setShowQuickstart(true)}
             >
-              New notebook
+              New automation
             </Button>
           </div>
         </div>
+
+        {showQuickstart && (
+          <QuickstartModal
+            open={showQuickstart}
+            onClose={() => setShowQuickstart(false)}
+            onStartBuilding={onStartBuilding}
+          />
+        )}
 
         <Card className="!bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-[var(--shadow)]">
           <CardContent className="flex flex-col gap-5 p-6">

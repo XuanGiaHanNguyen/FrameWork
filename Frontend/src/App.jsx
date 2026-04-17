@@ -11,6 +11,8 @@ export default function App() {
   const [page, setPage] = useState("rag");
   const [serverStatus, setServerStatus] = useState("checking");
   const [notebooks, setNotebooks] = useState([]);
+  const [flowCanvasVisible, setFlowCanvasVisible] = useState(false);
+  const [flowOpenEditorNodeId, setFlowOpenEditorNodeId] = useState(null);
 
   const t = themes.light;
 
@@ -104,10 +106,10 @@ export default function App() {
           />
 
           {/* Nav tabs */}
-          {NAV_TABS.map(({ id, Icon: TI, label }) => (
+          {NAV_TABS.map((tab) => (
             <button
-              key={id}
-              onClick={() => setPage(id)}
+              key={tab.id}
+              onClick={() => setPage(tab.id)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -116,14 +118,14 @@ export default function App() {
                 borderRadius: 6,
                 fontSize: 12,
                 cursor: "pointer",
-                background: page === id ? t.surface2 : "transparent",
-                color: page === id ? t.text : t.textMuted,
-                border: `1px solid ${page === id ? t.border2 : "transparent"}`,
-                fontWeight: page === id ? 500 : 400,
+                background: page === tab.id ? t.surface2 : "transparent",
+                color: page === tab.id ? t.text : t.textMuted,
+                border: `1px solid ${page === tab.id ? t.border2 : "transparent"}`,
+                fontWeight: page === tab.id ? 500 : 400,
               }}
             >
-              <TI size={14} strokeWidth={1.8} />
-              {label}
+              <tab.Icon size={14} strokeWidth={1.8} />
+              {tab.label}
             </button>
           ))}
 
@@ -140,8 +142,31 @@ export default function App() {
             />
           )}
           {page === "flow" && (
-            <div style={{ display: "flex", width: "100%", overflow: "hidden" }}>
-              <PipelineDemo theme={t} />
+            <div
+              style={{
+                display: "flex",
+                width: "100%",
+                overflow: "hidden",
+                flexDirection: "column",
+              }}
+            >
+              <PipelineDemo
+                theme={t}
+                onStartBuilding={() => {
+                  setFlowCanvasVisible(true);
+                  setFlowOpenEditorNodeId("2");
+                }}
+              />
+              {flowCanvasVisible && (
+                <div style={{ flex: 1, minHeight: 0, marginTop: 16 }}>
+                  <FlowCanvasWrapper
+                    theme={t}
+                    serverStatus={serverStatus}
+                    openEditorNodeId={flowOpenEditorNodeId}
+                    onOpenEditorHandled={() => setFlowOpenEditorNodeId(null)}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>

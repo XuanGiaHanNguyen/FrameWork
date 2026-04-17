@@ -8,8 +8,16 @@ import {
 
 const DialogContext = createContext(null);
 
-export function Dialog({ children }) {
-  const [open, setOpen] = useState(false);
+export function Dialog({ children, open: openProp, onOpenChange }) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : uncontrolledOpen;
+
+  const setOpen = (value) => {
+    if (!isControlled) setUncontrolledOpen(value);
+    onOpenChange?.(value);
+  };
+
   return (
     <DialogContext.Provider value={{ open, setOpen }}>
       {children}
@@ -65,6 +73,12 @@ export function DialogTitle({ className = "", ...props }) {
       className={`text-lg font-semibold text-slate-900 ${className}`.trim()}
       {...props}
     />
+  );
+}
+
+export function DialogDescription({ className = "", ...props }) {
+  return (
+    <p className={`text-sm text-slate-500 ${className}`.trim()} {...props} />
   );
 }
 
