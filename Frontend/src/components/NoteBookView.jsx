@@ -31,7 +31,7 @@ function IconBtn({ onClick, title, children, size = 32 }) {
       onClick={onClick}
       title={title}
       style={{ width: size, height: size }}
-      className="rounded-full border-none bg-transparent hover:bg-gray-100 cursor-pointer flex items-center justify-center text-gray-500 transition-colors duration-150 shrink-0"
+      className="rounded-full border-none bg-transparent hover:bg-neutral-100 cursor-pointer flex items-center justify-center text-neutral-500 transition-colors duration-150 shrink-0"
     >
       {children}
     </button>
@@ -42,7 +42,7 @@ function GhostBtn({ onClick, children, fullWidth }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center justify-center gap-1.5 ${fullWidth ? "w-full" : ""} px-4 py-2 rounded-full text-[13px] font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-900 cursor-pointer transition-colors duration-150`}
+      className={`flex items-center justify-center gap-1.5 ${fullWidth ? "w-full" : ""} px-4 py-2 rounded-full text-[13px] font-medium border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-900 cursor-pointer transition-colors duration-150`}
     >
       {children}
     </button>
@@ -53,7 +53,7 @@ function Chip({ onClick, children }) {
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-1 px-3 py-1 rounded-2xl text-xs border border-gray-200 bg-white hover:bg-gray-100 text-gray-500 cursor-pointer transition-colors duration-150"
+      className="flex items-center gap-1 px-3 py-1 rounded-2xl text-xs border border-neutral-200 bg-white hover:bg-neutral-100 text-neutral-500 cursor-pointer transition-colors duration-150"
     >
       {children}
     </button>
@@ -65,12 +65,12 @@ function CollapseStrip({ onClick, title, side }) {
     <div
       className={`w-[38px] shrink-0 flex flex-col items-center pt-3 bg-white ${
         side === "left" ? "border-r" : "border-l"
-      } border-gray-200`}
+      } border-neutral-200`}
     >
       <button
         onClick={onClick}
         title={title}
-        className="w-[30px] h-[30px] rounded-full border-none bg-transparent hover:bg-gray-100 cursor-pointer flex items-center justify-center text-gray-500 transition-colors duration-150"
+        className="w-[30px] h-[30px] rounded-full border-none bg-transparent hover:bg-neutral-100 cursor-pointer flex items-center justify-center text-neutral-500 transition-colors duration-150"
       >
         {side === "left" ? <PanelRightClose size={15} /> : <PanelLeftClose size={15} />}
       </button>
@@ -80,30 +80,30 @@ function CollapseStrip({ onClick, title, side }) {
 
 function SourceRow({ paper: p, onDownload, onRemove }) {
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-150">
-      <div className="w-[26px] h-[34px] rounded shrink-0 bg-gray-100 border border-gray-200 flex items-center justify-center">
-        <span className="text-[7px] font-extrabold text-gray-500 tracking-wide">PDF</span>
+    <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 cursor-pointer transition-colors duration-150">
+      <div className="w-[26px] h-[34px] rounded shrink-0 bg-neutral-100 border border-neutral-200 flex items-center justify-center">
+        <span className="text-[7px] font-extrabold text-neutral-500 tracking-wide">PDF</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] text-gray-900 font-medium truncate">{p.name}</p>
-        <p className="text-[11px] text-gray-400 mt-px">
+        <p className="text-[13px] text-neutral-900 font-medium truncate">{p.name}</p>
+        <p className="text-[11px] text-neutral-400 mt-px">
           {p.chunks} chunks · {((p.size || p.sizeBytes || 0) / 1024).toFixed(1)} KB
         </p>
       </div>
-      <div className="w-[18px] h-[18px] rounded-[3px] bg-gray-700 flex items-center justify-center shrink-0">
+      <div className="w-[18px] h-[18px] rounded-[3px] bg-neutral-700 flex items-center justify-center shrink-0">
         <Check size={11} color="white" strokeWidth={3} />
       </div>
       <button
         onClick={(e) => { e.stopPropagation(); onDownload(); }}
         title="Download"
-        className="bg-transparent border-none cursor-pointer text-gray-400 flex p-0.5 hover:text-gray-600"
+        className="bg-transparent border-none cursor-pointer text-neutral-400 flex p-0.5 hover:text-neutral-600"
       >
         <Download size={12} />
       </button>
       <button
         onClick={(e) => { e.stopPropagation(); onRemove(); }}
         title="Remove"
-        className="bg-transparent border-none cursor-pointer text-gray-400 flex p-0.5 hover:text-gray-600"
+        className="bg-transparent border-none cursor-pointer text-neutral-400 flex p-0.5 hover:text-neutral-600"
       >
         <X size={12} />
       </button>
@@ -113,11 +113,11 @@ function SourceRow({ paper: p, onDownload, onRemove }) {
 
 function StudioCard({ icon: Icon, label, beta }) {
   return (
-    <button className="relative flex items-center gap-2 px-3 py-[11px] rounded-xl bg-gray-100 hover:bg-[#EBEBEB] border-none cursor-pointer text-left transition-colors duration-150">
-      <Icon size={16} className="text-gray-500" strokeWidth={1.8} />
-      <span className="text-xs font-medium text-gray-900">{label}</span>
+    <button className="relative flex items-center gap-2 px-3 py-[11px] rounded-xl bg-neutral-100 hover:bg-[#EBEBEB] border-none cursor-pointer text-left transition-colors duration-150">
+      <Icon size={16} className="text-neutral-500" strokeWidth={1.8} />
+      <span className="text-xs font-medium text-neutral-900">{label}</span>
       {beta && (
-        <span className="absolute top-1 right-1.5 text-[8px] font-bold text-gray-400 bg-gray-200 rounded-[3px] px-1 py-px tracking-wider">
+        <span className="absolute top-1 right-1.5 text-[8px] font-bold text-neutral-400 bg-neutral-200 rounded-[3px] px-1 py-px tracking-wider">
           BETA
         </span>
       )}
@@ -127,13 +127,13 @@ function StudioCard({ icon: Icon, label, beta }) {
 
 function NoteRow({ note }) {
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 rounded-[9px] cursor-pointer hover:bg-gray-50 mb-0.5 transition-colors duration-150">
-      <div className="w-[34px] h-[34px] rounded-[7px] bg-gray-100 shrink-0 flex items-center justify-center">
-        <note.icon size={15} className="text-gray-500" strokeWidth={1.8} />
+    <div className="flex items-center gap-2 px-2 py-1.5 rounded-[9px] cursor-pointer hover:bg-neutral-50 mb-0.5 transition-colors duration-150">
+      <div className="w-[34px] h-[34px] rounded-[7px] bg-neutral-100 shrink-0 flex items-center justify-center">
+        <note.icon size={15} className="text-neutral-500" strokeWidth={1.8} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] text-gray-900 font-medium">{note.label}</p>
-        <p className="text-[11px] text-gray-400">2 sources · {note.time}</p>
+        <p className="text-[13px] text-neutral-900 font-medium">{note.label}</p>
+        <p className="text-[11px] text-neutral-400">2 sources · {note.time}</p>
       </div>
       <IconBtn size={28}><MoreVertical size={13} /></IconBtn>
     </div>
@@ -143,32 +143,34 @@ function NoteRow({ note }) {
 // ─── CHAT MESSAGE ─────────────────────────────────────────────────────────────
 function ChatMessage({ message: m }) {
   const isUser = m.role === "user";
-  return (
-    <div
-      className={`flex gap-2.5 items-start animate-[fadeIn_.2s_ease] ${isUser ? "flex-row-reverse" : "flex-row"}`}
-    >
-      {!isUser && (
-        <div className="w-[30px] h-[30px] rounded-full shrink-0 mt-0.5 bg-gray-200 border border-gray-200 flex items-center justify-center">
-          <Brain size={13} className="text-gray-500" strokeWidth={1.8} />
-        </div>
-      )}
-      <div className={isUser ? "max-w-[460px]" : "max-w-[560px]"}>
-        <div
-          className={`text-sm leading-relaxed ${
-            isUser
-              ? "bg-gray-700 text-white rounded-[18px_18px_5px_18px] px-4 py-2.5"
-              : "bg-white text-gray-900 border border-gray-200 shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-[5px_18px_18px_18px] px-4 py-[11px]"
-          }`}
-        >
-          <div className="prose-sm prose-p:mb-[0.45em] prose-p:last:mb-0 prose-ul:pl-5 prose-ul:mb-[0.45em] prose-li:mb-[0.2em] prose-strong:font-semibold prose-headings:font-semibold prose-code:bg-gray-100 prose-code:px-1 prose-code:rounded prose-code:text-[0.84em] prose-pre:bg-gray-100 prose-pre:p-3 prose-pre:rounded-lg prose-pre:overflow-x-auto prose-pre:text-[0.82em] prose-pre:mb-[0.45em] prose-a:text-gray-400 prose-a:no-underline hover:prose-a:underline">
-            <ReactMarkdown>{m.content}</ReactMarkdown>
+
+  if (isUser) {
+    return (
+      <div className="flex gap-2.5 items-start justify-end animate-[fadeIn_.2s_ease]">
+        <div className="max-w-[460px]">
+          <div className="bg-neutral-200 text-black rounded-xl px-4 py-2.5 text-sm leading-relaxed">
+            <div className="prose-sm prose-p:mb-[0.45em] prose-p:last:mb-0">
+              <ReactMarkdown>{m.content}</ReactMarkdown>
+            </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Assistant — no bubble, plain flowing text
+  return (
+    <div className="flex gap-3 items-start animate-[fadeIn_.2s_ease]">
+     
+      <div className="flex-1 min-w-0 max-w-[600px]">
+        <div className="text-sm leading-relaxed text-neutral-800 prose prose-sm prose-p:mb-[0.55em] prose-p:last:mb-0 prose-ul:pl-5 prose-ul:mb-[0.45em] prose-li:mb-[0.2em] prose-strong:font-semibold prose-headings:font-semibold prose-code:bg-neutral-100 prose-code:px-1 prose-code:rounded prose-code:text-[0.84em] prose-pre:bg-neutral-100 prose-pre:p-3 prose-pre:rounded-lg prose-pre:overflow-x-auto prose-pre:text-[0.82em] prose-pre:mb-[0.45em] prose-a:text-neutral-400 prose-a:no-underline hover:prose-a:underline max-w-none">
+          <ReactMarkdown>{m.content}</ReactMarkdown>
           {m.streaming && (
-            <span className="inline-block w-0.5 h-3.5 bg-current ml-0.5 align-text-bottom animate-[blink_.8s_step-end_infinite]" />
+            <span className="inline-block w-0.5 h-3.5 bg-neutral-600 ml-0.5 align-text-bottom animate-[blink_.8s_step-end_infinite]" />
           )}
         </div>
-        {!isUser && !m.streaming && (
-          <div className="flex items-center gap-1 mt-1.5 pl-0.5">
+        {!m.streaming && (
+          <div className="flex items-center gap-1 mt-2">
             <Chip onClick={() => {}}>✎ Save to notes</Chip>
             <IconBtn size={28} title="Copy">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -198,11 +200,8 @@ function ChatMessage({ message: m }) {
 // ─── THINKING BUBBLE ─────────────────────────────────────────────────────────
 function ThinkingBubble({ pipeline }) {
   return (
-    <div className="flex gap-2.5 items-start animate-[fadeIn_.2s_ease]">
-      <div className="w-[30px] h-[30px] rounded-full shrink-0 mt-0.5 bg-gray-200 border border-gray-200 flex items-center justify-center">
-        <Brain size={13} className="text-gray-500" strokeWidth={1.8} />
-      </div>
-      <div className="bg-white border border-gray-200 shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-[5px_18px_18px_18px] px-4 py-[11px]">
+    <div className="flex gap-3 items-start animate-[fadeIn_.2s_ease]">
+      <div className="pt-1">
         {pipeline?.length ? (
           <div className="flex flex-col gap-1">
             {pipeline.map((s, i) => (
@@ -210,22 +209,22 @@ function ThinkingBubble({ pipeline }) {
                 <div
                   className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                     i === pipeline.length - 1
-                      ? "bg-gray-700 animate-[pulse_1s_ease_infinite]"
-                      : "bg-gray-300"
+                      ? "bg-neutral-700 animate-[pulse_1s_ease_infinite]"
+                      : "bg-neutral-300"
                   }`}
                 />
-                <span className={`font-mono ${i === pipeline.length - 1 ? "text-gray-900" : "text-gray-400"}`}>
+                <span className={`font-mono ${i === pipeline.length - 1 ? "text-neutral-900" : "text-neutral-400"}`}>
                   {s}
                 </span>
               </div>
             ))}
           </div>
         ) : (
-          <div className="flex gap-1 items-center">
+          <div className="flex gap-1 items-center h-[30px]">
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="w-[7px] h-[7px] rounded-full bg-gray-400 animate-[dot_1.4s_ease_infinite]"
+                className="w-[7px] h-[7px] rounded-full bg-neutral-400 animate-[dot_1.4s_ease_infinite]"
                 style={{ animationDelay: `${i * 0.2}s` }}
               />
             ))}
@@ -290,14 +289,9 @@ export function NotebookView({ notebook, onBack, serverStatus }) {
     if (!allowed.length) return;
     setIngesting(true);
     try {
-      const { results } = await uploadFiles(notebook.id, allowed);
-      const ok   = results.filter((r) => r.status === "ok");
-      const fail = results.filter((r) => r.status !== "ok");
+      await uploadFiles(notebook.id, allowed);
+      // Silently refresh the sources panel — no chat message
       setPapers(await listFiles(notebook.id));
-      const parts = [];
-      if (ok.length)   parts.push(`✓ Ingested ${ok.map((r) => `"${r.name}"`).join(", ")}.`);
-      if (fail.length) parts.push(`✗ Failed: ${fail.map((r) => r.name).join(", ")}.`);
-      setMessages((m) => [...m, { role: "assistant", content: parts.join(" ") }]);
     } catch (err) {
       setMessages((m) => [...m, { role: "assistant", content: `Upload error: ${err.message}` }]);
     } finally {
@@ -358,8 +352,7 @@ export function NotebookView({ notebook, onBack, serverStatus }) {
   }, [serverStatus, notebook.id]);
 
   return (
-    <div className="flex flex-col w-full h-full bg-gray-100 font-sans">
-      {/* Custom keyframes — kept minimal since Tailwind doesn't ship these by default */}
+    <div className="flex flex-col w-full h-full bg-neutral-100 font-sans">
       <style>{`
         @keyframes blink  { 0%,100%{opacity:1;}50%{opacity:0;} }
         @keyframes dot    { 0%,80%,100%{transform:scale(0.6);opacity:0.4;}40%{transform:scale(1);opacity:1;} }
@@ -370,16 +363,14 @@ export function NotebookView({ notebook, onBack, serverStatus }) {
 
         {/* ── LEFT: Sources ──────────────────────────────────────────── */}
         {leftOpen ? (
-          <aside className="w-[300px] shrink-0 flex flex-col bg-white border-r border-gray-200 overflow-hidden">
-            {/* Header */}
-            <div className="h-[52px] px-4 flex items-center justify-between border-b border-gray-200 shrink-0">
-              <span className="text-[13px] font-semibold text-gray-900">Sources</span>
+          <aside className="w-[300px] shrink-0 flex flex-col bg-white border-r border-neutral-200 overflow-hidden">
+            <div className="h-[52px] px-4 flex items-center justify-between border-b border-neutral-200 shrink-0">
+              <span className="text-[13px] font-semibold text-neutral-900">Sources</span>
               <IconBtn onClick={() => setLeftOpen(false)} title="Collapse">
                 <PanelLeftClose size={15} />
               </IconBtn>
             </div>
 
-            {/* Add sources button */}
             <div className="px-3.5 pt-3 pb-2 shrink-0">
               <GhostBtn onClick={() => fileRef.current.click()} fullWidth>
                 {ingesting
@@ -389,58 +380,12 @@ export function NotebookView({ notebook, onBack, serverStatus }) {
               </GhostBtn>
             </div>
 
-            {/* Web search bar */}
-            <div className="px-3.5 pb-2.5 shrink-0">
-              <div className="border border-gray-200 rounded-xl bg-gray-100 overflow-hidden">
-                <div className="flex items-center gap-2 px-3 py-[7px]">
-                  <Search size={13} className="text-gray-400" />
-                  <input
-                    readOnly
-                    placeholder="Search the web for sources"
-                    className="flex-1 border-none outline-none bg-transparent text-xs text-gray-400"
-                  />
-                </div>
-                <div className="flex items-center gap-1 px-2 py-[5px] border-t border-gray-100">
-                  {["web", "ai"].map((mode) => (
-                    <button
-                      key={mode}
-                      onClick={() => setWebMode(mode)}
-                      className={`flex items-center gap-1 px-2 py-0.5 rounded-xl border-none text-[11px] font-medium cursor-pointer ${
-                        webMode === mode ? "bg-gray-200 text-gray-900" : "bg-transparent text-gray-400"
-                      }`}
-                    >
-                      {mode === "web" ? <><Globe size={10} /> Web</> : <Sparkles size={10} />}
-                      <ChevronDown size={9} />
-                    </button>
-                  ))}
-                  <div className="flex-1" />
-                  <button className="w-[22px] h-[22px] rounded-full bg-gray-200 border-none cursor-pointer flex items-center justify-center">
-                    <ArrowLeft size={11} className="text-gray-500 rotate-180" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Select all */}
-            <div className="px-3.5 pb-2 flex items-center justify-between shrink-0">
-              <span className="text-xs text-gray-500">Select all sources</span>
-              <div
-                onClick={() => setAllSelected((a) => !a)}
-                className={`w-[18px] h-[18px] rounded cursor-pointer flex items-center justify-center ${
-                  allSelected ? "bg-gray-700" : "border-2 border-gray-400 bg-transparent"
-                }`}
-              >
-                {allSelected && <Check size={11} color="white" strokeWidth={3} />}
-              </div>
-            </div>
-
             {dragOver && (
-              <div className="mx-3.5 mb-2 rounded-lg border-[1.5px] border-dashed border-gray-500 bg-gray-50 p-2.5 text-center shrink-0">
-                <p className="text-xs text-gray-500">Drop files here</p>
+              <div className="mx-3.5 mb-2 rounded-lg border-[1.5px] border-dashed border-neutral-500 bg-neutral-50 p-2.5 text-center shrink-0">
+                <p className="text-xs text-neutral-500">Drop files here</p>
               </div>
             )}
 
-            {/* Drop zone overlay */}
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
@@ -448,14 +393,13 @@ export function NotebookView({ notebook, onBack, serverStatus }) {
               className={`absolute inset-0 ${dragOver ? "z-[5]" : "-z-[1]"}`}
             />
 
-            {/* Source list */}
-            <div className="flex-1 overflow-y-auto px-1.5 pb-2">
+            <div className="flex-1 pt-1 overflow-y-auto px-1.5 pb-2">
               {loadingData ? (
                 <div className="flex justify-center pt-6">
-                  <Loader2 size={17} className="text-gray-400 animate-spin" />
+                  <Loader2 size={17} className="text-neutral-400 animate-spin" />
                 </div>
               ) : papers.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center mt-6">
+                <p className="text-xs text-neutral-400 text-center mt-6">
                   No sources yet — add a PDF or text file
                 </p>
               ) : (
@@ -470,14 +414,13 @@ export function NotebookView({ notebook, onBack, serverStatus }) {
               )}
             </div>
 
-            {/* Cited sources */}
             {sources.length > 0 && (
-              <div className="mx-2.5 mb-2.5 p-2.5 rounded-[9px] bg-gray-100 shrink-0">
-                <p className="text-[10px] text-gray-500 tracking-widest font-bold mb-1 uppercase">
+              <div className="mx-2.5 mb-2.5 p-2.5 rounded-[9px] bg-neutral-100 shrink-0">
+                <p className="text-[10px] text-neutral-500 tracking-widest font-bold mb-1 uppercase">
                   Cited in last answer
                 </p>
                 {sources.map((s) => (
-                  <p key={s} className="text-[11px] text-gray-500 py-px">• {s}</p>
+                  <p key={s} className="text-[11px] text-neutral-500 py-px">• {s}</p>
                 ))}
               </div>
             )}
@@ -487,10 +430,9 @@ export function NotebookView({ notebook, onBack, serverStatus }) {
         )}
 
         {/* ── CENTER: Chat ───────────────────────────────────────────── */}
-        <main className="flex-1 flex flex-col overflow-hidden bg-gray-100 border-r border-gray-200 min-w-0">
-          {/* Chat header */}
-          <div className="h-[52px] px-4 flex items-center justify-between bg-white border-b border-gray-200 shrink-0">
-            <span className="text-[13px] font-semibold text-gray-900">Chat</span>
+        <main className="flex-1 flex flex-col overflow-hidden bg-neutral-50 border-r border-neutral-200 min-w-0">
+          <div className="h-[52px] px-4 flex items-center justify-between bg-white border-b border-neutral-200 shrink-0">
+            <span className="text-[13px] font-semibold text-neutral-900">Chat</span>
             <div className="flex gap-0.5">
               <IconBtn><SlidersHorizontal size={15} /></IconBtn>
               <IconBtn onClick={handleClearHistory} title="Clear history">
@@ -499,16 +441,14 @@ export function NotebookView({ notebook, onBack, serverStatus }) {
               <IconBtn><MoreVertical size={15} /></IconBtn>
             </div>
           </div>
-        
 
-          {/* Messages */}
           <div
             ref={chatRef}
-            className="flex-1 overflow-y-auto px-3.5 py-5 flex flex-col gap-5"
+            className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-6"
           >
             {loadingData ? (
               <div className="flex justify-center mt-16">
-                <Loader2 size={20} className="text-gray-400 animate-spin" />
+                <Loader2 size={20} className="text-neutral-400 animate-spin" />
               </div>
             ) : (
               messages.map((m, i) => <ChatMessage key={m.id || i} message={m} />)
@@ -518,18 +458,17 @@ export function NotebookView({ notebook, onBack, serverStatus }) {
             )}
           </div>
 
-          {/* Input bar */}
-          <div className="p-2.5 bg-gray-100 shrink-0">
-            <div className="flex items-center gap-2.5 bg-white border border-gray-200 rounded-[26px] py-[9px] pl-4 pr-[9px] shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+          <div className="p-2.5 bg-neutral-50 shrink-0">
+            <div className="flex items-center gap-2.5 bg-white border border-neutral-200 rounded-[26px] py-[9px] pl-4 pr-[9px]">
               <input
-                className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder:text-gray-400"
+                className="flex-1 bg-transparent border-none outline-none text-sm text-neutral-900 placeholder:text-neutral-400"
                 placeholder={papers.length ? "Start typing..." : "Upload sources first, then ask questions..."}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && query(input)}
               />
               {papers.length > 0 && (
-                <span className="text-[11px] text-gray-500 bg-gray-100 rounded-xl px-2.5 py-0.5 whitespace-nowrap border border-gray-200">
+                <span className="text-[11px] text-neutral-500 bg-neutral-100 rounded-xl px-2.5 py-0.5 whitespace-nowrap border border-neutral-200">
                   {papers.length} source{papers.length !== 1 ? "s" : ""}
                 </span>
               )}
@@ -538,16 +477,16 @@ export function NotebookView({ notebook, onBack, serverStatus }) {
                 disabled={loading || !input.trim()}
                 className={`w-[34px] h-[34px] rounded-full flex items-center justify-center border-none shrink-0 transition-colors duration-150 ${
                   loading || !input.trim()
-                    ? "bg-gray-200 cursor-default"
-                    : "bg-gray-700 cursor-pointer"
+                    ? "bg-neutral-200 cursor-default"
+                    : "bg-neutral-700 cursor-pointer"
                 }`}
               >
                 {loading
-                  ? <Loader2 size={14} className="text-gray-400 animate-spin" />
+                  ? <Loader2 size={14} className="text-neutral-400 animate-spin" />
                   : <Send size={14} color={!input.trim() ? "#9CA3AF" : "#fff"} />}
               </button>
             </div>
-            <p className="text-center text-[11px] text-gray-400 mt-1.5">
+            <p className="text-center text-[11px] text-neutral-400 mt-1.5">
               Responses may be inaccurate — please verify against your sources.
             </p>
           </div>
@@ -556,8 +495,8 @@ export function NotebookView({ notebook, onBack, serverStatus }) {
         {/* ── RIGHT: Studio ──────────────────────────────────────────── */}
         {rightOpen ? (
           <aside className="w-[300px] shrink-0 flex flex-col bg-white overflow-hidden">
-            <div className="h-[52px] px-4 flex items-center justify-between border-b border-gray-200 shrink-0">
-              <span className="text-[13px] font-semibold text-gray-900">Studio</span>
+            <div className="h-[52px] px-4 flex items-center justify-between border-b border-neutral-200 shrink-0">
+              <span className="text-[13px] font-semibold text-neutral-900">Studio</span>
               <IconBtn onClick={() => setRightOpen(false)} title="Collapse">
                 <PanelRightClose size={15} />
               </IconBtn>
@@ -566,34 +505,27 @@ export function NotebookView({ notebook, onBack, serverStatus }) {
               <div className="grid grid-cols-1 gap-[7px] mb-4">
                 {STUDIO_CARDS.map((c) => <StudioCard key={c.label} {...c} />)}
               </div>
-              {/* Preset chips */}
-              <div className=" border-gray-200 border-t py-3 bg-white shrink-0">
-                <span className="text-xs text-gray-500 pl-1 block mb-2">
-                  Prompts 
-                </span>
-
+              <div className="border-neutral-200 border-t py-3 bg-white shrink-0">
+                <span className="text-xs text-neutral-500 pl-1 block mb-2">Prompts</span>
                 {PRESETS.map(({ Icon, label, prompt }, i) => (
                   <button
                     key={i}
                     onClick={() => query(prompt)}
-                    className="w-full flex items-center justify-between px-2 py-2 rounded-md hover:bg-gray-50 transition"
+                    className="w-full flex items-center justify-between px-2 py-2 rounded-md hover:bg-neutral-50 transition"
                   >
-                    {/* Left side */}
                     <div className="flex items-center gap-2">
-                      <Icon size={14} className="text-gray-400" />
-                      <span className="text-sm text-gray-700">{label}</span>
+                      <Icon size={14} className="text-neutral-400" />
+                      <span className="text-sm text-neutral-700">{label}</span>
                     </div>
                   </button>
                 ))}
-                {/* Add sources button */}
-              <div className="px-4 pt-3 pb-2 shrink-0">
-                <GhostBtn fullWidth>
-                  <Plus size={13} />
-                  Add prompts 
-                </GhostBtn>
+                <div className="px-4 pt-3 pb-2 shrink-0">
+                  <GhostBtn fullWidth>
+                    <Plus size={13} />
+                    Add prompts
+                  </GhostBtn>
+                </div>
               </div>
-              </div>
-              
             </div>
           </aside>
         ) : (
