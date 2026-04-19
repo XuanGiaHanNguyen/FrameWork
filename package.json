@@ -1,13 +1,17 @@
 {
-  "devDependencies": {
-    "concurrently": "^9.2.1",
-    "vite": "^8.0.3"
-  },
+  "name": "ollama-chat-root",
+  "private": true,
   "scripts": {
-    "dev": "concurrently -n BACKEND,FRONTEND -c blue,green \"npm run backend\" \"npm run frontend\"",
+    "dev": "concurrently -n OLLAMA,BACKEND,FRONTEND -c magenta,blue,green \"npm run ollama:start\" \"npm run backend\" \"npm run frontend\"",
     "backend": "cd Backend && npm run dev",
     "frontend": "cd Frontend && npm run dev",
     "ollama:start": "ollama serve",
-    "ollama:stop": "pkill ollama || true"
+    "ollama:stop": "pkill ollama || true",
+    "db:migrate": "cd Backend && npx prisma migrate dev",
+    "db:studio": "cd Backend && npx prisma studio",
+    "db:generate": "cd Backend && npx prisma generate"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
