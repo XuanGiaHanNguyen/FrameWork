@@ -5,10 +5,10 @@ export const API = "http://localhost:3001/api";
 
 // ─── PRESET RAG QUESTIONS ─────────────────────────────────────────────────────
 export const PRESETS = [
-  { Icon: AlignLeft,  label: "Summarize all",   prompt: "Summarize each uploaded paper in 2–3 sentences. Do not repeat summaries." },
-  { Icon: Layers,     label: "Compare methods", prompt: "What are the main methodological differences between these papers?" },
-  { Icon: HelpCircle, label: "Limitations",     prompt: "What limitations are mentioned across the papers?" },
-  { Icon: BookOpen,   label: "Common themes",   prompt: "What themes or topics recur across all the papers?" },
+  { Icon: AlignLeft, label: "Summarize all", prompt: "In exactly 2-3 sentences, write one brief summary for the uploaded document. Do not list multiple summaries. Do not ask questions. Stop immediately after the summary." },
+  { Icon: Layers,     label: "Compare methods", prompt: "What are the main methodological differences between these papers? Answer concisely and stop." },
+  { Icon: HelpCircle, label: "Limitations",     prompt: "What limitations are mentioned across the papers? Answer concisely and stop." },
+  { Icon: BookOpen,   label: "Common themes",   prompt: "What themes or topics recur across all the papers? Answer concisely and stop." },
 ];
 
 // ─── NODE META ────────────────────────────────────────────────────────────────
