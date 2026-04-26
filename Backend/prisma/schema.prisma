@@ -36,6 +36,7 @@ model NotebookFile {
   mimeType   String
   chunks     Int      @default(0)
   createdAt  DateTime @default(now())
+  autoTitle  String? 
 
   notebook Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
 

@@ -10,9 +10,10 @@ import { Router } from "express";
 import db                            from "../lib/db.js";
 import { uploadFile, deleteFile, presignedGetUrl } from "../lib/s3.js";
 import { upload, asyncHandler, mimeFromName }      from "../lib/helpers.js";
-import { ingestBuffer }              from "../lib/ingest.js";
+import { ingestBuffer, generateDocTitle  }              from "../lib/ingest.js";
 
 const router = Router({ mergeParams: true }); // gives access to :id from parent
+
 
 // ── POST /api/notebooks/:id/files ─────────────────────────────────────────────
 // Accepts multipart/form-data with field name "files" (multiple allowed).
@@ -49,14 +50,19 @@ router.post("/", upload.array("files", 20), asyncHandler(async (req, res) => {
         notebookId,
       });
 
-      // 3. Upsert DB record (re-upload of same filename updates it)
+      // 3. Generate auto-title using summarizer model (non-blocking)
+      const extractedText = file.buffer.toString("utf-8").split(" ").slice(0, 300).join(" ");
+      const autoTitle = await generateDocTitle(extractedText).catch(() => null);
+
+      // 4. Upsert DB record (re-upload of same filename updates it)
       const dbFile = await db.notebookFile.upsert({
         where:  { notebookId_name: { notebookId, name: filename } },
-        update: { s3Key, sizeBytes: file.size, mimeType, chunks },
-        create: { notebookId, name: filename, s3Key, sizeBytes: file.size, mimeType, chunks },
+        update: { s3Key, sizeBytes: file.size, mimeType, chunks, autoTitle },
+        create: { notebookId, name: filename, s3Key, sizeBytes: file.size, mimeType, chunks, autoTitle },
       });
 
-      return { status: "ok", id: dbFile.id, name: filename, chunks, size: file.size };
+      return { status: "ok", id: dbFile.id, name: filename, chunks, size: file.size, autoTitle };
+
     } catch (err) {
       console.error(`[ingest] ${filename}:`, err.message);
       return { status: "error", name: filename, reason: err.message };

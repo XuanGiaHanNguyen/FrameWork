@@ -111,3 +111,25 @@ export function dropFileVectors(notebookId, filename) {
   );
   store.memoryVectors = kept;
 }
+
+// ── Auto-title generation using summarizer model ──────────────────────────────
+import { Ollama } from "@langchain/ollama";
+
+const titler = new Ollama({
+  model: process.env.SUMMARY_MODEL || "llama32-summarizer",
+  baseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434",
+  temperature: 0.1,
+  numPredict: 60,
+});
+
+export async function generateDocTitle(text) {
+  const snippet = text.split(" ").slice(0, 300).join(" ");
+  try {
+    const title = await titler.invoke(
+      `Passage:\n\n${snippet}\n\nWrite a short title (5-8 words) for this document. Return only the title, nothing else.`
+    );
+    return title.trim().replace(/^["']|["']$/g, "");
+  } catch {
+    return null;
+  }
+}
